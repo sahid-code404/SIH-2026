@@ -48,7 +48,7 @@ jobs:
             }
           }
           NODE
-      - run: npm install --no-audit --no-fund
+      - run: npm install --no-audit --no-fund --allow-scripts=@tailwindcss/oxide,unrs-resolver
       - run: npm run lint
       - run: npm run typecheck
       - run: npm run build
