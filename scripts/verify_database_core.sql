@@ -7,9 +7,12 @@ DECLARE
     v_state_id UUID := '10000000-0000-4000-8000-000000000001';
     v_other_state_id UUID := '10000000-0000-4000-8000-000000000002';
     v_district_id UUID := '20000000-0000-4000-8000-000000000001';
-    v_created_at TIMESTAMPTZ;
-    v_updated_at_before TIMESTAMPTZ;
-    v_updated_at_after TIMESTAMPTZ;
+    v_state_created_at TIMESTAMPTZ;
+    v_state_updated_before TIMESTAMPTZ;
+    v_state_updated_after TIMESTAMPTZ;
+    v_district_created_at TIMESTAMPTZ;
+    v_district_updated_before TIMESTAMPTZ;
+    v_district_updated_after TIMESTAMPTZ;
     v_data_type TEXT;
     v_is_nullable TEXT;
 BEGIN
@@ -58,6 +61,17 @@ BEGIN
         RAISE EXCEPTION 'states.created_at must be NOT NULL timestamptz, got type=% nullable=%', v_data_type, v_is_nullable;
     END IF;
 
+    SELECT data_type, is_nullable
+      INTO v_data_type, v_is_nullable
+      FROM information_schema.columns
+     WHERE table_schema = 'public'
+       AND table_name = 'districts'
+       AND column_name = 'updated_at';
+
+    IF v_data_type IS DISTINCT FROM 'timestamp with time zone' OR v_is_nullable IS DISTINCT FROM 'NO' THEN
+        RAISE EXCEPTION 'districts.updated_at must be NOT NULL timestamptz, got type=% nullable=%', v_data_type, v_is_nullable;
+    END IF;
+
     IF to_regclass('public.uq_states_name_ci') IS NULL THEN
         RAISE EXCEPTION 'case-insensitive state-name uniqueness index is missing';
     END IF;
@@ -91,31 +105,57 @@ BEGIN
     INSERT INTO states (id, code, name)
     VALUES (v_state_id, 'TEST-ST', 'Core Test State')
     RETURNING created_at, updated_at
-         INTO v_created_at, v_updated_at_before;
+         INTO v_state_created_at, v_state_updated_before;
 
     INSERT INTO districts (id, state_id, code, name)
-    VALUES (v_district_id, v_state_id, 'TEST-DT', 'Core Test District');
+    VALUES (v_district_id, v_state_id, 'TEST-DT', 'Core Test District')
+    RETURNING created_at, updated_at
+         INTO v_district_created_at, v_district_updated_before;
 
     PERFORM pg_sleep(0.02);
 
     UPDATE states
        SET name = 'Core Test State Updated'
      WHERE id = v_state_id
-    RETURNING updated_at INTO v_updated_at_after;
+    RETURNING updated_at INTO v_state_updated_after;
 
-    IF v_updated_at_after <= v_updated_at_before THEN
-        RAISE EXCEPTION 'states.updated_at did not advance after update: before=% after=%', v_updated_at_before, v_updated_at_after;
+    IF v_state_updated_after <= v_state_updated_before THEN
+        RAISE EXCEPTION 'states.updated_at did not advance after update: before=% after=%', v_state_updated_before, v_state_updated_after;
     END IF;
 
-    IF (SELECT created_at FROM states WHERE id = v_state_id) IS DISTINCT FROM v_created_at THEN
+    IF (SELECT created_at FROM states WHERE id = v_state_id) IS DISTINCT FROM v_state_created_at THEN
         RAISE EXCEPTION 'states.created_at changed during ordinary update';
+    END IF;
+
+    PERFORM pg_sleep(0.02);
+
+    UPDATE districts
+       SET name = 'Core Test District Updated'
+     WHERE id = v_district_id
+    RETURNING updated_at INTO v_district_updated_after;
+
+    IF v_district_updated_after <= v_district_updated_before THEN
+        RAISE EXCEPTION 'districts.updated_at did not advance after update: before=% after=%', v_district_updated_before, v_district_updated_after;
+    END IF;
+
+    IF (SELECT created_at FROM districts WHERE id = v_district_id) IS DISTINCT FROM v_district_created_at THEN
+        RAISE EXCEPTION 'districts.created_at changed during ordinary update';
     END IF;
 
     BEGIN
         UPDATE states
            SET created_at = clock_timestamp()
          WHERE id = v_state_id;
-        RAISE EXCEPTION 'expected created_at immutability violation';
+        RAISE EXCEPTION 'expected state created_at immutability violation';
+    EXCEPTION
+        WHEN check_violation THEN NULL;
+    END;
+
+    BEGIN
+        UPDATE districts
+           SET created_at = clock_timestamp()
+         WHERE id = v_district_id;
+        RAISE EXCEPTION 'expected district created_at immutability violation';
     EXCEPTION
         WHEN check_violation THEN NULL;
     END;
@@ -183,8 +223,34 @@ BEGIN
         VALUES (
             '20000000-0000-4000-8000-000000000004',
             v_state_id,
+            ' test-dt ',
+            'Invalid District Code'
+        );
+        RAISE EXCEPTION 'expected malformed/padded district code to be rejected';
+    EXCEPTION
+        WHEN check_violation THEN NULL;
+    END;
+
+    BEGIN
+        INSERT INTO districts (id, state_id, code, name)
+        VALUES (
+            '20000000-0000-4000-8000-000000000005',
+            v_state_id,
             'TEST-DT-2',
-            'core test district'
+            ' Padded District Name'
+        );
+        RAISE EXCEPTION 'expected padded district name to be rejected';
+    EXCEPTION
+        WHEN check_violation THEN NULL;
+    END;
+
+    BEGIN
+        INSERT INTO districts (id, state_id, code, name)
+        VALUES (
+            '20000000-0000-4000-8000-000000000006',
+            v_state_id,
+            'TEST-DT-3',
+            'core test district updated'
         );
         RAISE EXCEPTION 'expected case-insensitive duplicate district name within a state to be rejected';
     EXCEPTION
