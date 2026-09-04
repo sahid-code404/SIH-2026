@@ -2,13 +2,11 @@
 
 ## Status
 
-This document describes the **implemented Phase 2 slice only**. It is not a promise that every future product component already exists.
+This document describes the **implemented Phase 2 design-system work**. It does not claim that later authentication, inspection, evidence, CCTV, anomaly or risk engines exist.
 
-The design system exists to give the unified NirikshanX PWA one coherent visual, responsive and accessibility contract before role-aware product workspaces are introduced.
+The design system gives the unified NirikshanX PWA one coherent visual, responsive and accessibility contract before role-aware product workspaces are introduced.
 
 ## Visual direction
-
-Target:
 
 ```text
 clean government enterprise
@@ -24,23 +22,11 @@ The design deliberately avoids generic dashboard styling, excessive cards, rando
 
 ## SiteProof reference
 
-`SiteProof/redesign/adaptive-glass-ui` is a read-only design reference. NirikshanX currently adapts these useful principles:
+`SiteProof/redesign/adaptive-glass-ui` remains read-only. NirikshanX adapts useful principles—semantic tokens, opaque readable surfaces, restrained ambient blur, consistent radii/depth, adaptive themes, deliberate status colors, compact shell proportions, visible focus, skip navigation and responsive layout—but does not copy SiteProof CSS or its role checks, routing model, localStorage token architecture or product authorization model.
 
-- semantic visual tokens;
-- opaque readable surfaces as the default;
-- restrained ambient blur instead of full-screen glass;
-- consistent radii and depth;
-- adaptive light/dark behavior;
-- deliberate status colors;
-- compact desktop shell proportions;
-- visible focus and a skip-link pattern;
-- responsive navigation patterns.
+## Token source of truth
 
-NirikshanX does **not** copy SiteProof's CSS file-by-file and does not import its role checks, routing model, access-token storage or product architecture.
-
-## Implemented token groups
-
-Source of truth: `apps/web/app/globals.css`.
+`apps/web/app/globals.css`
 
 ### Surfaces
 
@@ -53,7 +39,7 @@ Source of truth: `apps/web/app/globals.css`.
 --nx-border-strong
 ```
 
-### Typography colors
+### Text
 
 ```text
 --nx-text-primary
@@ -73,143 +59,148 @@ Source of truth: `apps/web/app/globals.css`.
 ### Semantic states
 
 ```text
---nx-success
---nx-success-soft
---nx-warning
---nx-warning-soft
---nx-danger
---nx-danger-soft
---nx-info
---nx-info-soft
+--nx-success / --nx-success-soft
+--nx-warning / --nx-warning-soft
+--nx-danger / --nx-danger-soft
+--nx-info / --nx-info-soft
 ```
 
 ### Risk semantics
 
-These are visual semantic tokens only. Their presence does **not** mean a risk engine exists yet.
+These are visual semantics only; they do not imply a risk engine exists.
 
 ```text
---nx-risk-low
---nx-risk-low-soft
---nx-risk-medium
---nx-risk-medium-soft
---nx-risk-high
---nx-risk-high-soft
---nx-risk-critical
---nx-risk-critical-soft
+--nx-risk-low / --nx-risk-low-soft
+--nx-risk-medium / --nx-risk-medium-soft
+--nx-risk-high / --nx-risk-high-soft
+--nx-risk-critical / --nx-risk-critical-soft
 ```
 
-### Geometry and motion
+Shadow, radius, spacing and motion values are centralized as `--nx-*` tokens as well.
 
-The implemented system centralizes shadow, radius, spacing and motion values. Components should prefer these tokens rather than introduce arbitrary one-off values when a shared semantic value exists.
+## Theme and motion
 
-## Theme behavior
+The current slice follows `prefers-color-scheme` for light/dark palettes. An explicit persisted user theme is intentionally not exposed yet.
 
-The current slice follows the operating-system preference using `prefers-color-scheme`. Both light and dark palettes preserve semantic state meaning.
-
-A future explicit user theme preference may override this system preference, but no fake setting is exposed before persistence behavior is implemented.
-
-## Motion
-
-Motion is limited to short interaction feedback such as button movement, navigation hover, switch movement and sticky-surface transitions.
-
-`prefers-reduced-motion: reduce` collapses nonessential transition/animation duration and disables smooth scrolling.
-
-## Accessibility baseline
-
-Implemented now:
-
-- semantic HTML for the live-status and component-review surface;
-- keyboard-operable native form controls;
-- globally visible `:focus-visible` treatment;
-- skip link to `#main-content`;
-- properly associated form labels;
-- native checkbox semantics;
-- switch semantics implemented with a checkbox plus `role="switch"`;
-- section labels connected with `aria-labelledby`;
-- `aria-live` only around the asynchronously loaded live system status;
-- error notices use `role="alert"`;
-- non-error static notices are not unnecessarily announced as live regions;
-- reduced-motion support.
-
-Accessible dialog/sheet/drawer focus management is **not yet claimed as implemented**.
+`prefers-reduced-motion: reduce` disables smooth scrolling and collapses nonessential transition/animation duration.
 
 ## Responsive application shell
 
 Implemented in `apps/web/components/app-shell.tsx`.
 
-### Desktop / tablet
+Desktop/tablet:
 
 ```text
-sidebar
-+
-sticky top bar
-+
-main workspace
+sidebar + sticky top bar + main workspace
 ```
 
-The shell does not contain authorization or role simulation. Its navigation currently points only to Phase 2 review sections.
+Mobile:
 
-### Mobile
+```text
+compact sticky top bar + single-column workspace + fixed bottom navigation
+```
 
-Below the mobile breakpoint the sidebar is removed and a compact fixed bottom navigation is used. Main content remains single-column where required, and the page reserves bottom space for the navigation and safe-area inset.
+The shell contains no role or authentication simulation. Current navigation points only to Phase 2 review sections.
 
-## Implemented UI primitives
+## Implemented core primitives
 
-Source: `apps/web/components/ui/primitives.tsx`.
+`apps/web/components/ui/primitives.tsx`
+
+- `Button` — primary, secondary, ghost, danger; small/medium/large sizing;
+- `Card`;
+- `Field`;
+- `Input`;
+- `Combobox` using native `input[list]` + `datalist` semantics;
+- `Textarea`;
+- `Select`;
+- `Checkbox`;
+- `Switch` using a checkbox plus `role="switch"`;
+- `StatusBadge`;
+- `SectionHeading`;
+- `InlineNotice`.
+
+## Implemented overlays
+
+`apps/web/components/ui/overlays.tsx`
+
+- `Dialog`;
+- `Sheet`;
+- `Drawer`;
+- `Popover`.
+
+Dialog, Sheet and Drawer are layout variants over the native HTML `<dialog>` modal behavior. They use explicit accessible titles/descriptions, native modal focus containment, Escape cancellation and visible close controls. The Popover uses native disclosure semantics through `<details>/<summary>`.
+
+## Implemented responsive data/workflow patterns
+
+`apps/web/components/ui/patterns.tsx`
+
+- `Search`;
+- `FilterBar`;
+- `DataTable`;
+- `MobileCardList`;
+- `Pagination`;
+- `Timeline`;
+- `Stepper`.
+
+The review page demonstrates one shared row source rendered as a desktop table and a narrow-screen card list, avoiding separate fake data models per viewport.
+
+## Implemented semantic card patterns
+
+`apps/web/components/ui/cards.tsx`
+
+- `StatCard`;
+- `RiskCard`;
+- `AnomalyCard`.
+
+`RiskCard` styling represents semantic risk levels only. It does not calculate risk. `AnomalyCard` displays a caller-provided review state but does not detect anomalies.
+
+## Implemented domain UI boundaries
+
+`apps/web/components/ui/domain-boundaries.tsx`
+
+- `MapPanel` — provider-neutral map container; no map provider is implied;
+- `EvidenceViewer` — evidence preview/metadata container; no evidence pipeline is implied;
+- `CCTVStatusCard` — caller-provided status presentation; no CCTV connection is implied;
+- `OfflineBanner` — connectivity-state presentation boundary;
+- `SyncIndicator` — caller-provided synchronization-state presentation.
+
+These components deliberately separate UI contracts from future domain engines. They are not populated with invented operational data on the Phase 2 review page.
+
+## Accessibility baseline
 
 Implemented:
 
-- `Button`
-  - primary
-  - secondary
-  - ghost
-  - danger
-  - small / medium / large sizing
-- `Card`
-- `Field`
-- `Input`
-- `Textarea`
-- `Select`
-- `Checkbox`
-- `Switch`
-- `StatusBadge`
-- `SectionHeading`
-- `InlineNotice`
+- semantic HTML;
+- native keyboard-operable controls;
+- visible `:focus-visible` treatment;
+- skip link to `#main-content`;
+- associated form labels;
+- checkbox and switch semantics;
+- connected `aria-labelledby` section headings;
+- `aria-live` only where asynchronous live status/synchronization state warrants it;
+- errors use `role="alert"`;
+- native modal dialog focus behavior and Escape cancellation;
+- reduced-motion support;
+- responsive data presentation without requiring horizontal scrolling on the mobile component variant.
 
-The design-system review surface uses neutral component examples. Its only operational information is the real foundation health response from `/api/v1/system/status` through the same-origin web route.
+Source-level contract tests in `apps/web/tests/design-system.test.mjs` guard key tokens, focus/reduced-motion rules, skip navigation, absence of SiteProof-style role checks/localStorage access, section label targets, native modal semantics and the real system-status endpoint.
 
-## Not yet implemented in this phase
+These tests are intentionally zero-dependency and run with Node's built-in test runner. They complement—but do not replace—rendered browser review.
 
-The following items are part of Issue #3 scope but are not claimed complete by this document yet:
+## CI render evidence
 
-- Combobox;
-- Dialog;
-- Sheet;
-- Drawer;
-- Popover;
-- StatCard;
-- RiskCard;
-- AnomalyCard;
-- DataTable;
-- MobileCardList;
-- Search;
-- FilterBar;
-- Pagination;
-- Timeline;
-- Stepper;
-- MapPanel;
-- EvidenceViewer;
-- CCTVStatusCard;
-- OfflineBanner;
-- SyncIndicator;
-- component-level automated accessibility interaction tests;
-- browser-based desktop/mobile visual sign-off.
+The full-stack CI job starts the actual Docker Compose stack and, after health/PostGIS checks, captures:
 
-These will be implemented and verified before Phase 2 is declared complete, rather than being created as inert future-feature stubs.
+```text
+desktop-1440x1200.png
+mobile-390x844.png
+```
+
+from the running web application using the browser available on the GitHub-hosted runner. The images are uploaded as the `phase-02-ui-renders` workflow artifact for visual review.
 
 ## Product-data rule
 
-The design system must never invent data merely to look complete. In particular, design-system examples must not imply that NirikshanX already has:
+The design system never invents data merely to look complete. In particular, examples must not imply that NirikshanX already has:
 
 - AI findings;
 - CCTV findings;
@@ -217,17 +208,17 @@ The design system must never invent data merely to look complete. In particular,
 - inspection evidence;
 - institution risk scores;
 - anomaly decisions;
-- completed verification receipts.
+- verified receipts.
 
-Risk colors may be demonstrated only as explicitly labeled semantic token samples until the real risk module exists.
+The only operational state on the review surface is the real foundation health contract.
 
-## Phase 2 completion gate
+## Remaining Phase 2 completion work
 
-Phase 2 remains open until all Issue #3 acceptance criteria are met, including:
+The component inventory is implemented, but Phase 2 stays open until verification is complete:
 
-1. reusable components and tokens are implemented rather than documented only;
-2. CI remains green from a clean checkout;
-3. the full stack still starts through Docker Compose;
-4. desktop and mobile rendering are visually reviewed;
-5. keyboard/focus/responsive behavior is exercised;
-6. documentation matches the code actually present.
+1. latest branch CI passes from a clean checkout;
+2. full Docker Compose integration smoke passes;
+3. desktop and mobile render artifacts are inspected for overflow, clipping, hierarchy and responsive collapse;
+4. keyboard/focus behavior for overlays and controls receives browser-level review;
+5. any visual/accessibility defects found during that review are fixed;
+6. Issue #3 and its final documentation are updated from the verified result.
