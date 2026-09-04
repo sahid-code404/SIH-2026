@@ -36,9 +36,19 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "24.20.0"
-          cache: npm
-          cache-dependency-path: apps/web/package-lock.json
-      - run: npm ci
+      - name: Verify direct dependency pins
+        run: |
+          node - <<'NODE'
+          const p = require('./package.json');
+          for (const group of ['dependencies', 'devDependencies']) {
+            for (const [name, version] of Object.entries(p[group] || {})) {
+              if (/^[~^*]|\s|[<>=|]/.test(version)) {
+                throw new Error(`${name} is not exactly pinned: ${version}`);
+              }
+            }
+          }
+          NODE
+      - run: npm install --no-audit --no-fund
       - run: npm run lint
       - run: npm run typecheck
       - run: npm run build
