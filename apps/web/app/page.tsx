@@ -2,6 +2,7 @@
 
 import { useEffect, useState, type CSSProperties } from "react";
 import { AppShell } from "@/components/app-shell";
+import { DesignSystemShowcase } from "@/components/design-system-showcase";
 import {
   Button,
   Card,
@@ -156,6 +157,15 @@ export default function Home() {
             </div>
           </Card>
         </div>
+      </section>
+
+      <section className="nx-section" aria-labelledby="patterns-heading">
+        <SectionHeading
+          id="patterns-heading"
+          title="Responsive and workflow patterns"
+          description="Modal surfaces, data presentation, pagination and generic workflow anatomy are implemented before domain-specific lifecycles."
+        />
+        <DesignSystemShowcase />
       </section>
 
       <section className="nx-section" id="tokens" aria-labelledby="tokens-heading">
