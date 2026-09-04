@@ -2,11 +2,28 @@
 
 PostgreSQL + PostGIS is the authoritative NirikshanX data store. Redis is not authoritative and must never be the only copy of business state.
 
+## Migration runtime
+
+Spring Boot 4 keeps Flyway auto-configuration in its dedicated Flyway module. The backend therefore uses `spring-boot-starter-flyway` plus Flyway's PostgreSQL database module rather than relying on `flyway-core` alone.
+
+The local/CI database image initializes the PostGIS extension before the application starts. Those extension-owned objects make the `public` schema pre-existing from Flyway's point of view. NirikshanX intentionally configures:
+
+```yaml
+spring:
+  flyway:
+    baseline-on-migrate: true
+    baseline-version: "0"
+```
+
+The version-0 baseline represents only the image-provided PostGIS objects. Because application migrations begin at V1, a fresh database then executes and records **V1 and V2 normally**. Application migration history remains owned by Flyway and is append-only after merge.
+
+CI explicitly verifies that `flyway_schema_history` contains successful V1 and V2 records, so PostGIS being preinstalled cannot accidentally mask a missing application migration.
+
 ## Migration history
 
 | Migration | Purpose |
 |---|---|
-| `V1__enable_postgis_and_bootstrap.sql` | Enable PostGIS and create the infrastructure bootstrap marker. |
+| `V1__enable_postgis_and_bootstrap.sql` | Confirm/enable PostGIS and create the infrastructure bootstrap marker. |
 | `V2__database_core_geography.sql` | Establish relational database-core rules and canonical `states` / `districts` geography. |
 
 Flyway migrations are append-only after merge. Never modify an already-deployed migration to change production schema; add a new migration instead.
@@ -98,7 +115,7 @@ Future business tables must reference `state_id` / `district_id` instead of repe
 
 ## PostGIS contract
 
-PostGIS is enabled by `V1`. No institution table is created in Database Core because Institutions is a later vertical phase.
+PostGIS is confirmed by `V1`. No institution table is created in Database Core because Institutions is a later vertical phase.
 
 When the Institution phase is implemented, its location contract is:
 
@@ -121,12 +138,15 @@ The future spatial column/index must be introduced with the Institution migratio
 
 It verifies:
 
+- Flyway schema history exists;
+- V1 and V2 are both recorded as successful;
+- the V1 `platform_bootstrap` object exists;
 - both geography tables exist;
 - UUID and `timestamptz` contracts;
 - required indexes and timestamp triggers;
 - valid State → District insertion;
-- `updated_at` advances after update;
-- `created_at` is immutable;
+- State and District `updated_at` advance after update;
+- State and District `created_at` are immutable;
 - duplicate codes fail;
 - malformed/padded codes and names fail;
 - case-insensitive duplicate names fail;
