@@ -81,6 +81,7 @@ export default function Home() {
 
       <section className="nx-section" id="system" aria-labelledby="system-heading">
         <SectionHeading
+          id="system-heading"
           title="Live foundation status"
           description="Real connectivity reported by the implemented backend. No mock operational intelligence is rendered."
         />
@@ -101,6 +102,7 @@ export default function Home() {
 
       <section className="nx-section" id="components" aria-labelledby="components-heading">
         <SectionHeading
+          id="components-heading"
           title="Core interaction primitives"
           description="Shared controls use the same token, typography, focus and motion contracts across desktop and mobile."
         />
@@ -158,6 +160,7 @@ export default function Home() {
 
       <section className="nx-section" id="tokens" aria-labelledby="tokens-heading">
         <SectionHeading
+          id="tokens-heading"
           title="Semantic tokens"
           description="Meaning is centralized so product modules do not scatter one-off colors, radii, shadows or status styling."
         />
