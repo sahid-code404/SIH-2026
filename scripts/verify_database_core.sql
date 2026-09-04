@@ -16,6 +16,32 @@ DECLARE
     v_data_type TEXT;
     v_is_nullable TEXT;
 BEGIN
+    IF to_regclass('public.flyway_schema_history') IS NULL THEN
+        RAISE EXCEPTION 'Flyway schema history is missing; application migrations did not run';
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1
+          FROM flyway_schema_history
+         WHERE version = '1'
+           AND success
+    ) THEN
+        RAISE EXCEPTION 'Flyway V1 is not recorded as successful';
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1
+          FROM flyway_schema_history
+         WHERE version = '2'
+           AND success
+    ) THEN
+        RAISE EXCEPTION 'Flyway V2 is not recorded as successful';
+    END IF;
+
+    IF to_regclass('public.platform_bootstrap') IS NULL THEN
+        RAISE EXCEPTION 'V1 platform_bootstrap table is missing';
+    END IF;
+
     IF to_regclass('public.states') IS NULL THEN
         RAISE EXCEPTION 'states table is missing';
     END IF;
@@ -264,7 +290,7 @@ BEGIN
         WHEN foreign_key_violation THEN NULL;
     END;
 
-    RAISE NOTICE 'Database-core schema and constraint verification passed.';
+    RAISE NOTICE 'Flyway V1/V2 and database-core schema/constraint verification passed.';
 END;
 $$;
 
