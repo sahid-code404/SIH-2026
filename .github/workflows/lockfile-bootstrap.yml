@@ -1,0 +1,31 @@
+name: Bootstrap web lockfile
+
+on:
+  push:
+    branches: ["phase/00-foundation"]
+
+permissions:
+  contents: read
+
+jobs:
+  lockfile:
+    name: Generate npm lockfile artifact
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24.20.0"
+      - name: Generate package-lock from reviewed direct pins
+        run: npm install --package-lock-only --ignore-scripts --no-audit --no-fund
+      - name: Verify package-lock is synchronized
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - uses: actions/upload-artifact@v4
+        with:
+          name: web-package-lock
+          path: apps/web/package-lock.json
+          if-no-files-found: error
+          retention-days: 1
