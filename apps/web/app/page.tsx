@@ -1,6 +1,21 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type CSSProperties } from "react";
+import { AppShell } from "@/components/app-shell";
+import { DesignSystemShowcase } from "@/components/design-system-showcase";
+import {
+  Button,
+  Card,
+  Checkbox,
+  Field,
+  InlineNotice,
+  Input,
+  SectionHeading,
+  Select,
+  StatusBadge,
+  Switch,
+  Textarea,
+} from "@/components/ui/primitives";
 
 type ComponentState = {
   status: "UP" | "DOWN";
@@ -14,6 +29,13 @@ type SystemStatus = {
     redis: ComponentState;
   };
 };
+
+function statusTone(value: string) {
+  if (value === "UP") return "success" as const;
+  if (value === "CHECKING") return "neutral" as const;
+  if (value === "DEGRADED") return "warning" as const;
+  return "danger" as const;
+}
 
 export default function Home() {
   const [status, setStatus] = useState<SystemStatus | null>(null);
@@ -30,7 +52,10 @@ export default function Home() {
         if (!response.ok) throw new Error(`Backend returned ${response.status}`);
         return (await response.json()) as SystemStatus;
       })
-      .then(setStatus)
+      .then((nextStatus) => {
+        setStatus(nextStatus);
+        setError(null);
+      })
       .catch((reason: unknown) => {
         if (reason instanceof DOMException && reason.name === "AbortError") return;
         setError(reason instanceof Error ? reason.message : "Backend unavailable");
@@ -39,39 +64,160 @@ export default function Home() {
     return () => controller.abort();
   }, []);
 
-  return (
-    <main className="mx-auto flex min-h-screen max-w-5xl items-center px-5 py-12 sm:px-8">
-      <section className="w-full rounded-[28px] border border-[var(--border)] bg-[var(--surface)] p-6 shadow-sm sm:p-10">
-        <div className="mb-8 flex flex-col gap-2">
-          <span className="text-sm font-semibold tracking-[0.16em] text-[var(--primary)]">SIH26095</span>
-          <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">NirikshanX foundation</h1>
-          <p className="max-w-2xl text-base leading-7 text-[var(--text-secondary)]">
-            Unified monitoring and trusted inspection platform. This screen intentionally shows only
-            implemented infrastructure state; no fake risk, inspection or AI data is rendered.
-          </p>
-        </div>
+  const backend = status?.status ?? (error ? "DOWN" : "CHECKING");
+  const database = status?.components.database.status ?? (error ? "DOWN" : "CHECKING");
+  const redis = status?.components.redis.status ?? (error ? "DOWN" : "CHECKING");
 
-        <div className="grid gap-4 sm:grid-cols-3" aria-live="polite">
-          <StatusCard label="Backend" value={status?.status ?? (error ? "DOWN" : "CHECKING")} />
-          <StatusCard label="PostgreSQL + PostGIS" value={status?.components.database.status ?? "CHECKING"} />
-          <StatusCard label="Redis" value={status?.components.redis.status ?? "CHECKING"} />
+  return (
+    <AppShell>
+      <header className="nx-page-heading">
+        <span className="nx-page-meta">SIH26095 · Phase 2</span>
+        <h1>A calm, authoritative interface system for trusted verification work.</h1>
+        <p>
+          This phase establishes reusable visual, responsive and accessibility primitives. Operational cards below use only the
+          live foundation health contract; the remaining controls are explicitly design-system examples rather than simulated
+          inspections, AI findings or risk results.
+        </p>
+      </header>
+
+      <section className="nx-section" id="system" aria-labelledby="system-heading">
+        <SectionHeading
+          id="system-heading"
+          title="Live foundation status"
+          description="Real connectivity reported by the implemented backend. No mock operational intelligence is rendered."
+        />
+        <div className="nx-status-grid" aria-live="polite" aria-busy={!status && !error}>
+          <SystemStatusCard label="Backend" value={backend} detail={status?.service ?? "nirikshanx-backend"} />
+          <SystemStatusCard label="PostgreSQL + PostGIS" value={database} detail="Authoritative data store" />
+          <SystemStatusCard label="Redis" value={redis} detail="Disposable infrastructure" />
         </div>
 
         {error ? (
-          <p className="mt-5 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900">
-            Health check failed: {error}
-          </p>
+          <div style={{ marginTop: 12 }}>
+            <InlineNotice tone="danger" title="Health check unavailable">
+              {error}
+            </InlineNotice>
+          </div>
         ) : null}
       </section>
-    </main>
+
+      <section className="nx-section" id="components" aria-labelledby="components-heading">
+        <SectionHeading
+          id="components-heading"
+          title="Core interaction primitives"
+          description="Shared controls use the same token, typography, focus and motion contracts across desktop and mobile."
+        />
+
+        <div className="nx-component-grid">
+          <Card className="nx-component-panel" as="section">
+            <h3>Actions and states</h3>
+            <p>Neutral examples for component verification. They do not execute domain operations.</p>
+            <div className="nx-button-row">
+              <Button>Primary action</Button>
+              <Button variant="secondary">Secondary</Button>
+              <Button variant="ghost">Quiet action</Button>
+              <Button variant="danger">Destructive</Button>
+            </div>
+
+            <div style={{ display: "grid", gap: 10, marginTop: 18 }}>
+              <InlineNotice title="Information pattern">Use concise, factual copy and preserve human decision-making.</InlineNotice>
+              <InlineNotice tone="success" title="Success pattern">A completed system action can be acknowledged without exaggerating assurance.</InlineNotice>
+            </div>
+          </Card>
+
+          <Card className="nx-component-panel" as="section">
+            <h3>Form controls</h3>
+            <p>Labels remain visible, hints remain subordinate, and native semantics are preserved.</p>
+            <div className="nx-form-stack">
+              <Field label="Example text field" htmlFor="design-text" hint="Component example only; no record is created.">
+                <Input id="design-text" placeholder="Enter sample text" autoComplete="off" />
+              </Field>
+
+              <Field label="Example selection" htmlFor="design-select">
+                <Select id="design-select" defaultValue="default">
+                  <option value="default">Default option</option>
+                  <option value="secondary">Secondary option</option>
+                </Select>
+              </Field>
+
+              <Field label="Example notes" htmlFor="design-notes">
+                <Textarea id="design-notes" placeholder="Write neutral component-review notes" />
+              </Field>
+
+              <Checkbox
+                id="design-checkbox"
+                label="Example checkbox"
+                description="Keyboard and pointer interaction use the native checkbox contract."
+              />
+              <Switch
+                id="design-switch"
+                label="Example switch"
+                description="The switch is a presentation of a native checkbox with role=switch."
+              />
+            </div>
+          </Card>
+        </div>
+      </section>
+
+      <section className="nx-section" aria-labelledby="patterns-heading">
+        <SectionHeading
+          id="patterns-heading"
+          title="Responsive and workflow patterns"
+          description="Modal surfaces, data presentation, pagination and generic workflow anatomy are implemented before domain-specific lifecycles."
+        />
+        <DesignSystemShowcase />
+      </section>
+
+      <section className="nx-section" id="tokens" aria-labelledby="tokens-heading">
+        <SectionHeading
+          id="tokens-heading"
+          title="Semantic tokens"
+          description="Meaning is centralized so product modules do not scatter one-off colors, radii, shadows or status styling."
+        />
+
+        <div className="nx-token-grid">
+          <TokenSample name="Primary" variable="--nx-primary" value="Action / focus" />
+          <TokenSample name="Surface" variable="--nx-surface" value="Readable content" />
+          <TokenSample name="Success" variable="--nx-success" value="Confirmed success" />
+          <TokenSample name="Danger" variable="--nx-danger" value="Error / destructive" />
+        </div>
+
+        <div className="nx-risk-row" aria-label="Risk semantic token examples">
+          <div className="nx-risk-token nx-risk-token--low"><strong>risk-low</strong><span>Semantic token only</span></div>
+          <div className="nx-risk-token nx-risk-token--medium"><strong>risk-medium</strong><span>Semantic token only</span></div>
+          <div className="nx-risk-token nx-risk-token--high"><strong>risk-high</strong><span>Semantic token only</span></div>
+          <div className="nx-risk-token nx-risk-token--critical"><strong>risk-critical</strong><span>Semantic token only</span></div>
+        </div>
+      </section>
+    </AppShell>
   );
 }
 
-function StatusCard({ label, value }: { label: string; value: string }) {
+function SystemStatusCard({ label, value, detail }: { label: string; value: string; detail: string }) {
   return (
-    <article className="rounded-2xl border border-[var(--border)] p-4">
-      <p className="text-sm text-[var(--text-secondary)]">{label}</p>
-      <p className="mt-2 text-lg font-semibold">{value}</p>
-    </article>
+    <Card className="nx-status-card" as="article">
+      <div>
+        <p>{label}</p>
+        <strong>{value}</strong>
+      </div>
+      <div className="nx-status-card-footer">
+        <StatusBadge tone={statusTone(value)}>{value}</StatusBadge>
+        <p>{detail}</p>
+      </div>
+    </Card>
+  );
+}
+
+function TokenSample({ name, variable, value }: { name: string; variable: string; value: string }) {
+  const style = { "--token-color": `var(${variable})` } as CSSProperties;
+
+  return (
+    <div className="nx-token-sample" style={style}>
+      <span aria-hidden="true" />
+      <div>
+        <strong>{name}</strong>
+        <small>{variable} · {value}</small>
+      </div>
+    </div>
   );
 }

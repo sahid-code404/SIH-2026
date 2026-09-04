@@ -26,7 +26,7 @@ jobs:
         run: gradle -p backend clean test bootJar --no-daemon
 
   web:
-    name: Web lint, typecheck and build
+    name: Web lint, typecheck, test and build
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -53,6 +53,7 @@ jobs:
       - run: npm ci --no-audit --no-fund
       - run: npm run lint
       - run: npm run typecheck
+      - run: npm run test:ui
       - run: npm run build
         env:
           BACKEND_INTERNAL_URL: http://127.0.0.1:8080
@@ -91,6 +92,38 @@ jobs:
         run: |
           docker compose exec -T postgres sh -lc 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -tAc "SELECT PostGIS_Version();"' | tee /tmp/postgis-version.txt
           test -s /tmp/postgis-version.txt
+      - name: Verify responsive browser behavior
+        run: |
+          BROWSER="$(command -v google-chrome || command -v chromium || command -v chromium-browser || true)"
+          test -n "$BROWSER"
+          "$BROWSER" \
+            --headless=new \
+            --no-sandbox \
+            --disable-gpu \
+            --remote-debugging-address=127.0.0.1 \
+            --remote-debugging-port=9222 \
+            --user-data-dir=/tmp/nirikshanx-chrome-cdp \
+            about:blank >/tmp/nirikshanx-chrome.log 2>&1 &
+          BROWSER_PID=$!
+          trap 'kill "$BROWSER_PID" 2>/dev/null || true' EXIT
+          timeout 30 bash -c 'until curl -fsS http://127.0.0.1:9222/json/version >/dev/null; do sleep 1; done'
+          node apps/web/tests/browser-smoke.mjs
+      - name: Capture desktop and mobile renders
+        run: |
+          BROWSER="$(command -v google-chrome || command -v chromium || command -v chromium-browser || true)"
+          test -n "$BROWSER"
+          mkdir -p /tmp/nirikshanx-ui
+          "$BROWSER" --headless=new --no-sandbox --disable-gpu --hide-scrollbars --virtual-time-budget=3500 --window-size=1440,1200 --screenshot=/tmp/nirikshanx-ui/desktop-1440x1200.png http://127.0.0.1:3000
+          "$BROWSER" --headless=new --no-sandbox --disable-gpu --hide-scrollbars --virtual-time-budget=3500 --window-size=390,844 --screenshot=/tmp/nirikshanx-ui/mobile-390x844.png http://127.0.0.1:3000
+          test -s /tmp/nirikshanx-ui/desktop-1440x1200.png
+          test -s /tmp/nirikshanx-ui/mobile-390x844.png
+      - name: Upload UI render evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: phase-02-ui-renders
+          path: /tmp/nirikshanx-ui/*.png
+          if-no-files-found: error
+          retention-days: 7
       - name: Show stack diagnostics on failure
         if: failure()
         run: |

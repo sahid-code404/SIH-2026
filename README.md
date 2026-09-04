@@ -8,9 +8,9 @@ NirikshanX is a scheme-agnostic monitoring and verification platform for the Dep
 
 ## Current phase
 
-The repository is in **Foundation implementation** on branch `phase/00-foundation`.
+**Foundation is merged into `main`.** Active development is **Phase 2 — Design System** on branch `phase/02-design-system`, tracked by Issue #3.
 
-Implemented now:
+Foundation implemented and verified:
 
 - Next.js 16.3.3 App Router web application with strict TypeScript and Tailwind baseline;
 - minimal PWA manifest + service worker baseline;
@@ -21,20 +21,33 @@ Implemented now:
 - Flyway database bootstrap enabling PostGIS;
 - real backend database + Redis connectivity endpoint;
 - Actuator liveness/readiness probes;
-- web smoke endpoint;
+- web smoke endpoint and same-origin backend routing;
 - Docker Compose orchestration;
-- CI for backend build/test, web lint/typecheck/build and Compose validation.
+- exact direct web dependency pins plus committed transitive npm lockfile;
+- deterministic `npm ci` in CI and the production web image;
+- CI for backend build/test, web lint/typecheck/build, Compose validation and full-stack integration smoke.
 
-Not implemented yet: authentication, authorization, institutions, inspections, evidence, AI, CCTV, risk scoring or demo intelligence. No fake values are used to imply otherwise.
+Phase 2 currently adds the first real design-system slice: semantic light/dark tokens, responsive shell primitives, accessible focus and skip-link behavior, reduced-motion handling, buttons/forms/status/notice primitives, and a component-review surface backed only by the real foundation health contract.
+
+Not implemented yet: authentication, authorization, institutions, inspections, evidence, AI, CCTV, attendance, risk scoring or demo intelligence. No fake values should imply otherwise.
 
 ## Quick start
 
 Requirements: Git, Docker Engine and Docker Compose v2.
 
+### Stable merged foundation
+
 ```bash
 git clone git@github.com:sahid-code404/SIH-2026.git
 cd SIH-2026
-git switch phase/00-foundation
+cp .env.example .env
+docker compose up --build
+```
+
+### Active Phase 2 development
+
+```bash
+git switch phase/02-design-system
 cp .env.example .env
 docker compose up --build
 ```
@@ -97,15 +110,16 @@ docker compose down -v
 
 Reference: `sahid-code404/SiteProof`, branch `redesign/adaptive-glass-ui`.
 
-NirikshanX reuses selected trust and evidence concepts, not the SiteProof product architecture wholesale. See `docs/reference/siteproof-reuse-map.md`.
+NirikshanX reuses selected trust, evidence and visual-system concepts—not the SiteProof product architecture wholesale. See `docs/reference/siteproof-reuse-map.md`.
 
 ## Documentation
 
 - `docs/architecture/technology-baseline.md`
 - `docs/architecture/system.md`
+- `docs/architecture/design-system.md`
 - `docs/database/schema.md`
 - `docs/reference/siteproof-reuse-map.md`
 
-## Important verification rule
+## Verification rule
 
-The phase is not complete merely because files exist. Before merging, CI must pass and `docker compose up --build` must be exercised from a clean checkout. Any failure found during verification must be fixed on this branch before Issue #1 is closed.
+A phase is not complete merely because files exist. Before a phase is merged, its CI must pass and its acceptance criteria must be exercised. Phase 2 additionally requires rendered desktop/mobile visual review and accessibility-oriented interaction review before Issue #3 can be closed.
