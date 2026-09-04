@@ -12,6 +12,9 @@ spring:
   flyway:
     enabled: true
     validate-on-migrate: true
+    baseline-on-migrate: true
+    baseline-version: "0"
+    baseline-description: "Pre-existing PostGIS extension objects"
   data:
     redis:
       host: ${REDIS_HOST:127.0.0.1}
