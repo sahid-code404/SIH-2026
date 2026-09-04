@@ -92,6 +92,22 @@ jobs:
         run: |
           docker compose exec -T postgres sh -lc 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -tAc "SELECT PostGIS_Version();"' | tee /tmp/postgis-version.txt
           test -s /tmp/postgis-version.txt
+      - name: Verify responsive browser behavior
+        run: |
+          BROWSER="$(command -v google-chrome || command -v chromium || command -v chromium-browser || true)"
+          test -n "$BROWSER"
+          "$BROWSER" \
+            --headless=new \
+            --no-sandbox \
+            --disable-gpu \
+            --remote-debugging-address=127.0.0.1 \
+            --remote-debugging-port=9222 \
+            --user-data-dir=/tmp/nirikshanx-chrome-cdp \
+            about:blank >/tmp/nirikshanx-chrome.log 2>&1 &
+          BROWSER_PID=$!
+          trap 'kill "$BROWSER_PID" 2>/dev/null || true' EXIT
+          timeout 30 bash -c 'until curl -fsS http://127.0.0.1:9222/json/version >/dev/null; do sleep 1; done'
+          node apps/web/tests/browser-smoke.mjs
       - name: Capture desktop and mobile renders
         run: |
           BROWSER="$(command -v google-chrome || command -v chromium || command -v chromium-browser || true)"
