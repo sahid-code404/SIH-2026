@@ -67,6 +67,26 @@ export function Input({ className = "", ...props }: InputHTMLAttributes<HTMLInpu
   return <input className={`nx-control ${className}`.trim()} {...props} />;
 }
 
+export function Combobox({
+  id,
+  options,
+  className = "",
+  ...props
+}: Omit<InputHTMLAttributes<HTMLInputElement>, "list"> & {
+  id: string;
+  options: string[];
+}) {
+  const listId = `${id}-options`;
+  return (
+    <>
+      <input id={id} list={listId} className={`nx-control ${className}`.trim()} {...props} />
+      <datalist id={listId}>
+        {options.map((option) => <option value={option} key={option} />)}
+      </datalist>
+    </>
+  );
+}
+
 export function Textarea({ className = "", ...props }: TextareaHTMLAttributes<HTMLTextAreaElement>) {
   return <textarea className={`nx-control nx-textarea ${className}`.trim()} {...props} />;
 }
