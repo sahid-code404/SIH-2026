@@ -26,7 +26,7 @@ jobs:
         run: gradle -p backend clean test bootJar --no-daemon
 
   web:
-    name: Web lint, typecheck and build
+    name: Web lint, typecheck, test and build
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -53,6 +53,7 @@ jobs:
       - run: npm ci --no-audit --no-fund
       - run: npm run lint
       - run: npm run typecheck
+      - run: npm run test:ui
       - run: npm run build
         env:
           BACKEND_INTERNAL_URL: http://127.0.0.1:8080
