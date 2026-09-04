@@ -1,0 +1,101 @@
+name: CI
+
+on:
+  push:
+    branches: [main, "phase/**"]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    name: Backend build and test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "25"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "9.2.1"
+      - name: Test and package
+        run: gradle -p backend clean test bootJar --no-daemon
+
+  web:
+    name: Web lint, typecheck and build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24.20.0"
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+      - name: Verify direct dependency pins
+        run: |
+          node - <<'NODE'
+          const p = require('./package.json');
+          for (const group of ['dependencies', 'devDependencies']) {
+            for (const [name, version] of Object.entries(p[group] || {})) {
+              if (/^[~^*]|\s|[<>=|]/.test(version)) {
+                throw new Error(`${name} is not exactly pinned: ${version}`);
+              }
+            }
+          }
+          NODE
+      - run: npm ci --no-audit --no-fund
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm run build
+        env:
+          BACKEND_INTERNAL_URL: http://127.0.0.1:8080
+
+  compose-config:
+    name: Validate Compose configuration
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: cp .env.example .env
+      - run: docker compose config --quiet
+
+  integration-smoke:
+    name: Full stack integration smoke
+    runs-on: ubuntu-latest
+    needs: [backend, web, compose-config]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare local environment
+        run: cp .env.example .env
+      - name: Build and start the stack
+        run: docker compose up -d --build
+      - name: Wait for backend readiness
+        run: |
+          timeout 300 bash -c 'until curl -fsS http://127.0.0.1:8080/actuator/health/readiness >/dev/null; do sleep 3; done'
+      - name: Wait for web health
+        run: |
+          timeout 180 bash -c 'until curl -fsS http://127.0.0.1:3000/api/health >/dev/null; do sleep 3; done'
+      - name: Verify database, Redis and same-origin backend route
+        run: |
+          curl -fsS http://127.0.0.1:8080/api/v1/system/status | tee /tmp/backend-status.json
+          jq -e '.status == "UP" and .components.database.status == "UP" and .components.redis.status == "UP"' /tmp/backend-status.json
+          curl -fsS http://127.0.0.1:3000/backend-api/api/v1/system/status | tee /tmp/web-proxy-status.json
+          jq -e '.status == "UP" and .components.database.status == "UP" and .components.redis.status == "UP"' /tmp/web-proxy-status.json
+      - name: Verify PostGIS migration
+        run: |
+          docker compose exec -T postgres sh -lc 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -tAc "SELECT PostGIS_Version();"' | tee /tmp/postgis-version.txt
+          test -s /tmp/postgis-version.txt
+      - name: Show stack diagnostics on failure
+        if: failure()
+        run: |
+          docker compose ps
+          docker compose logs --no-color --tail=250
+      - name: Tear down
+        if: always()
+        run: docker compose down -v --remove-orphans

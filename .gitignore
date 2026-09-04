@@ -1,0 +1,58 @@
+# OS / editors
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+
+# Environment / secrets
+.env
+.env.*
+!.env.example
+
+# Node / Next.js
+node_modules/
+.next/
+out/
+coverage/
+*.tsbuildinfo
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Java / Gradle
+.gradle/
+build/
+**/build/
+*.class
+*.jar
+!gradle/wrapper/gradle-wrapper.jar
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Local data / containers
+.data/
+data/
+minio-data/
+postgres-data/
+redis-data/
+
+# Logs
+*.log
+logs/
+
+# Keys / certificates
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore

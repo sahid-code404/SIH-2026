@@ -1,0 +1,44 @@
+# System Architecture — Foundation Slice
+
+## Implemented in Phase 1
+
+```text
+Browser
+  |
+  v
+Next.js PWA :3000
+  | same-origin /backend-api rewrite
+  v
+Spring Boot :8080
+  |---- PostgreSQL 18 + PostGIS 3.6
+  |---- Redis 8.8
+  `---- S3-compatible MinIO process (storage integration follows with evidence module)
+```
+
+The Spring Boot process is the beginning of the modular monolith. No business modules have been split into microservices. PostgreSQL is authoritative; Redis is treated as disposable infrastructure.
+
+## Real foundation contract
+
+`GET /api/v1/system/status` performs a real `SELECT 1` against PostgreSQL and a real Redis `PING`. It returns only component state and does not expose credentials, hosts, exceptions or stack traces.
+
+The web homepage calls that backend endpoint through a server-side Next.js rewrite. The UI does not contain hard-coded risk, AI, CCTV, attendance or inspection data.
+
+## Database bootstrap
+
+Flyway migration `V1__enable_postgis_and_bootstrap.sql` enables PostGIS and creates one bootstrap marker table. There is no manual database click-path.
+
+## PWA baseline
+
+The web app ships a manifest and minimal production service worker. The service worker deliberately does not cache backend API responses. Full offline inspection repositories, mutation queues, evidence persistence and conflict resolution belong to the later offline-sync phase.
+
+## Security boundary
+
+Authentication is intentionally absent in this foundation slice. No placeholder token mechanism is introduced, and no JWT is stored in `localStorage`. Authentication will be implemented as its own vertical slice with short-lived access tokens and rotating sessions.
+
+## Dependency reproducibility
+
+All direct web dependencies are exact-version pinned and CI rejects semver ranges. The npm-generated `package-lock.json` is committed to capture the transitive dependency graph. CI and the production web Docker build both use `npm ci`; npm lifecycle scripts are restricted through `.npmrc` and the explicit `allowScripts` entries in `package.json`.
+
+## Object storage boundary
+
+MinIO is pinned and starts locally now so the infrastructure topology is established. Evidence buckets, server-generated object keys, upload authorization, independent hash verification and retention policy are not claimed as implemented yet.

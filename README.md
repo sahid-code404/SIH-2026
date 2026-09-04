@@ -4,84 +4,108 @@
 
 NirikshanX is a scheme-agnostic monitoring and verification platform for the Department of Social Justice and Empowerment. Its central question is:
 
-> How strongly can the Ministry trust the operational claims, inspection evidence, and compliance state reported by an institution?
+> How strongly can the Ministry trust the operational claims, inspection evidence and compliance state reported by an institution?
 
-## Engineering principles
+## Current phase
 
-- Build a **modular monolith** first; split services only where runtime characteristics justify it.
-- PostgreSQL + PostGIS is the authoritative business-data store.
-- Use one responsive PWA with role-aware workspaces.
-- Treat AI as decision support: **AI recommends; humans decide**.
-- Use tamper-evident evidence, independent server verification, immutable audit history, and explainable scores.
-- Never treat GPS, a photo, CCTV, attendance data, or an AI score as absolute truth by itself.
-- Build vertical slices: schema → backend rules → API → authorization → frontend → tests → verification → documentation.
-- Do not scaffold fake features or hard-code demo intelligence.
+The repository is in **Foundation implementation** on branch `phase/00-foundation`.
+
+Implemented now:
+
+- Next.js 16.3.3 App Router web application with strict TypeScript and Tailwind baseline;
+- minimal PWA manifest + service worker baseline;
+- Java 25 / Spring Boot 4.1.1 modular-monolith backend;
+- PostgreSQL 18 + PostGIS 3.6.4 local database topology;
+- Redis 8.8.2 as non-authoritative infrastructure;
+- pinned MinIO local object-storage process;
+- Flyway database bootstrap enabling PostGIS;
+- real backend database + Redis connectivity endpoint;
+- Actuator liveness/readiness probes;
+- web smoke endpoint;
+- Docker Compose orchestration;
+- CI for backend build/test, web lint/typecheck/build and Compose validation.
+
+Not implemented yet: authentication, authorization, institutions, inspections, evidence, AI, CCTV, risk scoring or demo intelligence. No fake values are used to imply otherwise.
+
+## Quick start
+
+Requirements: Git, Docker Engine and Docker Compose v2.
+
+```bash
+git clone git@github.com:sahid-code404/SIH-2026.git
+cd SIH-2026
+git switch phase/00-foundation
+cp .env.example .env
+docker compose up --build
+```
+
+Then open:
+
+```text
+Web:           http://localhost:3000
+Backend:       http://localhost:8080
+MinIO console: http://localhost:9001
+```
+
+Verify the real backend connectivity contract:
+
+```bash
+curl http://localhost:8080/api/v1/system/status
+curl http://localhost:8080/actuator/health/liveness
+curl http://localhost:8080/actuator/health/readiness
+curl http://localhost:3000/api/health
+```
+
+Expected system-status shape:
+
+```json
+{
+  "service": "nirikshanx-backend",
+  "status": "UP",
+  "components": {
+    "database": { "status": "UP" },
+    "redis": { "status": "UP" }
+  }
+}
+```
+
+Stop cleanly:
+
+```bash
+docker compose down
+```
+
+Remove local development data only when intentionally resetting the environment:
+
+```bash
+docker compose down -v
+```
+
+## Engineering rules
+
+- Modular monolith first; split only when runtime characteristics justify it.
+- PostgreSQL + PostGIS is authoritative.
+- Redis is disposable/non-authoritative.
+- One responsive PWA with role-aware workspaces as those roles are implemented.
+- AI recommends; humans decide.
+- No single GPS/photo/CCTV/attendance/AI signal is treated as absolute truth.
+- Build vertical slices: schema → backend rules → API → authorization → frontend → tests → verification → docs.
+- No fake AI/risk/CCTV/inspection data.
+- SiteProof remains a read-only donor/reference repository.
 
 ## SiteProof relationship
 
-`github.com/sahid-code404/SiteProof` branch `redesign/adaptive-glass-ui` is a **read-only technical reference** for selected high-assurance evidence concepts. NirikshanX is not a rename or fork of SiteProof.
+Reference: `sahid-code404/SiteProof`, branch `redesign/adaptive-glass-ui`.
 
-High-value donor concepts include challenge lifecycle discipline, evidence hashing/packaging, immutable assignment history, audit events, sensor/camera verification ideas, signed receipts, and selected UX patterns. Authentication/storage/authorization decisions that do not fit NirikshanX are explicitly not inherited.
+NirikshanX reuses selected trust and evidence concepts, not the SiteProof product architecture wholesale. See `docs/reference/siteproof-reuse-map.md`.
 
-## Target architecture
+## Documentation
 
-```text
-Unified Next.js PWA
-        │
-        ▼
-Secure Spring Boot API
-        │
-        ▼
-Modular Monolith
-  ├─ Identity & Access
-  ├─ Institutions / Schemes
-  ├─ Inspections / Assignments
-  ├─ Evidence / Challenges
-  ├─ Risk / Anomalies / Fusion
-  ├─ Corrective Actions
-  └─ Audit / Notifications
-        │
-        ├─ PostgreSQL + PostGIS
-        ├─ Redis
-        └─ S3-compatible private object storage (MinIO locally)
+- `docs/architecture/technology-baseline.md`
+- `docs/architecture/system.md`
+- `docs/database/schema.md`
+- `docs/reference/siteproof-reuse-map.md`
 
-Separate only where justified:
-  ├─ AI workers
-  └─ CCTV edge/analytics
-```
+## Important verification rule
 
-## Planned stack
-
-- **Web:** Next.js, React, strict TypeScript, App Router, Tailwind CSS, shadcn/ui/Radix, TanStack Query, React Hook Form, Zod, Motion, MapLibre GL JS, IndexedDB, Service Worker/PWA.
-- **Backend:** Java LTS, Spring Boot, Spring Security, Spring Data JPA/Hibernate, Flyway, Gradle Kotlin DSL, Actuator, Micrometer, OpenTelemetry.
-- **Data:** PostgreSQL + PostGIS, Redis, MinIO/S3 abstraction.
-- **AI/CV where justified:** Python, FastAPI internal inference, OpenCV, NumPy, scikit-learn, ONNX Runtime.
-
-Exact dependency versions are pinned only after compatibility and current stable-release checks.
-
-## Execution order
-
-1. Repository audit
-2. SiteProof reference audit
-3. Foundation
-4. Design system
-5. Database core
-6. Authentication
-7. Authorization
-8. Institutions
-9. Schemes / projects
-10. Role-aware workspaces
-11. Inspection templates and lifecycle
-12. Inspector profiles and surprise assignment
-13. Inspector PWA + offline storage/sync
-14. Proof-of-presence + live challenge engine
-15. Evidence upload, hashing, chain, receipts, similarity
-16. Anomaly and explainable risk engines
-17. CCTV / attendance intelligence
-18. Corrective actions, reporting, hardening, SIH demo
-
-## Current status
-
-**Phase 0 started.** The repository was empty at initialization. No feature is considered implemented until it is backed by real persisted data, authorization, tests, and verification.
-
-See `docs/reference/siteproof-reuse-map.md` and `docs/architecture/technology-baseline.md` as they are added during the initial audit.
+The phase is not complete merely because files exist. Before merging, CI must pass and `docker compose up --build` must be exercised from a clean checkout. Any failure found during verification must be fixed on this branch before Issue #1 is closed.
