@@ -43,6 +43,15 @@ const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 await send("Page.enable");
 await send("Runtime.enable");
+
+// Chrome's remote-debugging window defaults to a narrow viewport on GitHub-hosted
+// runners. Establish the actual desktop acceptance viewport before testing layout.
+await send("Emulation.setDeviceMetricsOverride", {
+  width: 1440,
+  height: 1200,
+  deviceScaleFactor: 1,
+  mobile: false,
+});
 await send("Page.navigate", { url: appUrl });
 await delay(3500);
 
@@ -50,11 +59,14 @@ const desktop = await evaluate(`({
   width: window.innerWidth,
   scrollWidth: document.documentElement.scrollWidth,
   heading: document.querySelector('h1')?.textContent?.trim() ?? '',
-  mobileNav: getComputedStyle(document.querySelector('.nx-mobile-nav')).display
+  mobileNav: getComputedStyle(document.querySelector('.nx-mobile-nav')).display,
+  sidebar: getComputedStyle(document.querySelector('.nx-sidebar')).display
 })`);
+assert.equal(desktop.width, 1440, `Desktop viewport override was not applied: ${desktop.width}`);
 assert.ok(desktop.heading.includes("trusted verification"), "Expected Phase 2 heading was not rendered");
 assert.ok(desktop.scrollWidth <= desktop.width + 1, `Desktop horizontal overflow: ${desktop.scrollWidth} > ${desktop.width}`);
 assert.equal(desktop.mobileNav, "none", "Mobile navigation should be hidden at desktop width");
+assert.notEqual(desktop.sidebar, "none", "Desktop sidebar should be visible at 1440px");
 
 const clickedDialog = await evaluate(`(() => {
   const button = [...document.querySelectorAll('button')].find((node) => node.textContent?.trim() === 'Open dialog');
@@ -87,6 +99,7 @@ const mobile = await evaluate(`({
   sidebar: getComputedStyle(document.querySelector('.nx-sidebar')).display,
   skipTarget: document.querySelector('.nx-skip-link')?.getAttribute('href')
 })`);
+assert.equal(mobile.width, 390, `Mobile viewport override was not applied: ${mobile.width}`);
 assert.ok(mobile.scrollWidth <= mobile.width + 1, `Mobile horizontal overflow: ${mobile.scrollWidth} > ${mobile.width}`);
 assert.notEqual(mobile.mobileNav, "none", "Mobile navigation should be visible at 390px");
 assert.equal(mobile.sidebar, "none", "Desktop sidebar should be hidden at 390px");
