@@ -287,7 +287,7 @@ BEGIN
         DELETE FROM states WHERE id = v_state_id;
         RAISE EXCEPTION 'expected referenced state deletion to be restricted';
     EXCEPTION
-        WHEN foreign_key_violation THEN NULL;
+        WHEN restrict_violation THEN NULL;
     END;
 
     RAISE NOTICE 'Flyway V1/V2 and database-core schema/constraint verification passed.';
