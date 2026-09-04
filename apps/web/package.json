@@ -24,6 +24,10 @@
     "tailwindcss": "4.1.12",
     "typescript": "5.9.2"
   },
+  "allowScripts": {
+    "@tailwindcss/oxide@4.1.12": true,
+    "unrs-resolver@1.12.2": true
+  },
   "engines": {
     "node": "24.20.0"
   }

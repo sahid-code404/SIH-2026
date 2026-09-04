@@ -1,7 +1,7 @@
 FROM node:24.20.0-alpine3.24 AS deps
 WORKDIR /app
-COPY package.json ./
-RUN npm install --no-audit --no-fund --allow-scripts=@tailwindcss/oxide,unrs-resolver
+COPY package.json .npmrc ./
+RUN npm install --no-audit --no-fund
 
 FROM node:24.20.0-alpine3.24 AS build
 WORKDIR /app
