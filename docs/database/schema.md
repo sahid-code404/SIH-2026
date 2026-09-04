@@ -6,18 +6,9 @@ PostgreSQL + PostGIS is the authoritative NirikshanX data store. Redis is not au
 
 Spring Boot 4 keeps Flyway auto-configuration in its dedicated Flyway module. The backend therefore uses `spring-boot-starter-flyway` plus Flyway's PostgreSQL database module rather than relying on `flyway-core` alone.
 
-The local/CI database image initializes the PostGIS extension before the application starts. Those extension-owned objects make the `public` schema pre-existing from Flyway's point of view. NirikshanX intentionally configures:
+The local/CI PostGIS image initializes the PostGIS extension before the application starts. On a fresh NirikshanX database, Flyway still treats the application schema as empty for migration purposes, creates `flyway_schema_history`, then executes V1 and V2 normally. V1 uses `CREATE EXTENSION IF NOT EXISTS postgis`, so a preinstalled PostGIS extension is harmless and does not replace application migration history.
 
-```yaml
-spring:
-  flyway:
-    baseline-on-migrate: true
-    baseline-version: "0"
-```
-
-The version-0 baseline represents only the image-provided PostGIS objects. Because application migrations begin at V1, a fresh database then executes and records **V1 and V2 normally**. Application migration history remains owned by Flyway and is append-only after merge.
-
-CI explicitly verifies that `flyway_schema_history` contains successful V1 and V2 records, so PostGIS being preinstalled cannot accidentally mask a missing application migration.
+No Flyway baseline marker is configured or required. CI explicitly verifies that `flyway_schema_history` contains successful V1 and V2 records and that the V1 bootstrap object exists, so preinstalled infrastructure cannot silently mask a missing application migration.
 
 ## Migration history
 
@@ -151,7 +142,9 @@ It verifies:
 - malformed/padded codes and names fail;
 - case-insensitive duplicate names fail;
 - missing parent states fail;
-- referenced state deletion fails.
+- `ON DELETE RESTRICT` prevents deletion of a referenced state.
+
+PostgreSQL reports the deliberate `ON DELETE RESTRICT` case as a `restrict_violation`; the verifier catches that condition explicitly rather than weakening the foreign-key behavior.
 
 The script wraps all test fixtures in `BEGIN` / `ROLLBACK`, so CI never turns temporary verification rows into seed data.
 
