@@ -135,10 +135,12 @@ export function StatusBadge({
 }
 
 export function SectionHeading({
+  id,
   title,
   description,
   action,
 }: {
+  id?: string;
   title: string;
   description?: string;
   action?: ReactNode;
@@ -146,7 +148,7 @@ export function SectionHeading({
   return (
     <div className="nx-section-heading">
       <div>
-        <h2>{title}</h2>
+        <h2 id={id}>{title}</h2>
         {description ? <p>{description}</p> : null}
       </div>
       {action ? <div className="nx-section-action">{action}</div> : null}
@@ -164,7 +166,7 @@ export function InlineNotice({
   children: ReactNode;
 }) {
   return (
-    <div className={`nx-notice nx-notice--${tone}`} role={tone === "danger" ? "alert" : "status"}>
+    <div className={`nx-notice nx-notice--${tone}`} role={tone === "danger" ? "alert" : undefined}>
       <strong>{title}</strong>
       <div>{children}</div>
     </div>
