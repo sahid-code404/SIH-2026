@@ -92,6 +92,9 @@ jobs:
         run: |
           docker compose exec -T postgres sh -lc 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -tAc "SELECT PostGIS_Version();"' | tee /tmp/postgis-version.txt
           test -s /tmp/postgis-version.txt
+      - name: Verify database-core migration and constraints
+        run: |
+          docker compose exec -T postgres sh -lc 'psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB"' < scripts/verify_database_core.sql
       - name: Verify responsive browser behavior
         run: |
           BROWSER="$(command -v google-chrome || command -v chromium || command -v chromium-browser || true)"
@@ -108,7 +111,7 @@ jobs:
           trap 'kill "$BROWSER_PID" 2>/dev/null || true' EXIT
           timeout 30 bash -c 'until curl -fsS http://127.0.0.1:9222/json/version >/dev/null; do sleep 1; done'
           node apps/web/tests/browser-smoke.mjs
-      - name: Capture desktop and mobile renders
+      - name: Capture desktop and mobile regression renders
         run: |
           BROWSER="$(command -v google-chrome || command -v chromium || command -v chromium-browser || true)"
           test -n "$BROWSER"
@@ -117,10 +120,10 @@ jobs:
           "$BROWSER" --headless=new --no-sandbox --disable-gpu --hide-scrollbars --virtual-time-budget=3500 --window-size=390,844 --screenshot=/tmp/nirikshanx-ui/mobile-390x844.png http://127.0.0.1:3000
           test -s /tmp/nirikshanx-ui/desktop-1440x1200.png
           test -s /tmp/nirikshanx-ui/mobile-390x844.png
-      - name: Upload UI render evidence
+      - name: Upload UI regression render evidence
         uses: actions/upload-artifact@v4
         with:
-          name: phase-02-ui-renders
+          name: phase-03-regression-ui-renders
           path: /tmp/nirikshanx-ui/*.png
           if-no-files-found: error
           retention-days: 7
