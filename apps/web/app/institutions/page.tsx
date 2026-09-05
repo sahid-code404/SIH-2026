@@ -158,7 +158,7 @@ export default function InstitutionsPage() {
 
       <section className="nx-institution-width nx-institution-hero">
         <div>
-          <span className="nx-page-meta">Phase 6 · Canonical institutions</span>
+          <span className="nx-page-meta">Authorized institution registry</span>
           <h1>Institution registry</h1>
           <p>Only institutions inside your current jurisdiction or active institution memberships are returned by the server.</p>
         </div>
@@ -250,7 +250,7 @@ function InstitutionHeader() {
         <span className="nx-brand-mark" aria-hidden="true">NX</span>
         <span><strong>NirikshanX</strong><small>Institution registry</small></span>
       </Link>
-      <nav aria-label="Institution navigation"><Link href="/account">Account & security</Link><Link href="/">System</Link></nav>
+      <nav aria-label="Institution navigation"><Link href="/account">Account & security</Link><Link href="/">Workspace</Link></nav>
     </header>
   );
 }
