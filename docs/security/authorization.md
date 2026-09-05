@@ -1,19 +1,20 @@
 # Authorization
 
-NirikshanX authorization is a deny-by-default combination of database-backed RBAC and jurisdiction ABAC. Authentication proves who the caller is and which server session is active; authorization separately decides what that caller may do to a resource now.
+NirikshanX authorization is a deny-by-default combination of database-backed RBAC, jurisdiction ABAC and domain resource scope. Authentication proves who the caller is and which server session is active; authorization separately decides what that caller may do to a resource now.
 
 ## Decision model
 
-The long-term domain decision is:
+The domain decision is:
 
 ```text
 allow = permission
-     && jurisdiction
-     && resource ownership / assignment policy
-     && resource state policy
+     && jurisdiction / ownership / assignment scope
+     && resource state policy where applicable
 ```
 
-Phase 5 implements the reusable role/permission and NATIONAL/STATE/DISTRICT jurisdiction foundations. Institution ownership, inspection assignment, surprise-inspection disclosure, CCTV purpose/time limits and workflow-state rules are deliberately deferred until those domain resources exist. They must plug into this authorization boundary rather than bypass it.
+Phase 5 established reusable role/permission and NATIONAL/STATE/DISTRICT jurisdiction foundations. Phase 6 is the first real domain integration of that model: institution resources combine live RBAC permission with government jurisdiction or exact-institution membership scope.
+
+Later inspection assignment, surprise-inspection disclosure, CCTV purpose/time limits and workflow-state rules must plug into the same authorization boundary rather than bypass it.
 
 ## Authoritative state
 
@@ -23,7 +24,7 @@ PostgreSQL is authoritative for authorization. Access JWTs remain deliberately c
 sub, sid, jti, iss, aud, iat, exp
 ```
 
-Roles, permissions and jurisdiction are never copied into the JWT. `AccessTokenFilter` validates the token and live session, then resolves the caller's current effective permissions from PostgreSQL for that request. Therefore a role revocation or permission mapping change does not wait for JWT expiry.
+Roles, permissions, jurisdiction and institution memberships are never copied into the JWT. `AccessTokenFilter` validates the token and live session, then resolves the caller's current effective permissions from PostgreSQL for that request.
 
 Frontend access tokens remain runtime-memory-only. Authorization data returned to the UI is informational and must never be trusted as a backend enforcement decision.
 
@@ -46,11 +47,11 @@ The system-defined catalog is:
 
 There is no implicit role hierarchy. Every role receives explicit rows in `role_permissions`. Business code must not contain `role == "ADMIN"`, `ROLE_*` shortcuts, or assumptions that one role automatically inherits another.
 
-`authorization.manage` is assigned only to `SYSTEM_ADMIN`. This prevents a ministry administrator from granting itself system-administrator authority. `MINISTRY_ADMIN` can inspect authorization through `authorization.read` but cannot mutate it.
+`authorization.manage` is assigned only to `SYSTEM_ADMIN`. `MINISTRY_ADMIN` can inspect authorization through `authorization.read` but cannot mutate it.
 
 ## Permission catalog
 
-The Phase 5 catalog is version controlled in Flyway V4 and includes:
+The catalog includes:
 
 ```text
 institution.read
@@ -84,11 +85,11 @@ authorization.read
 authorization.manage
 ```
 
-A permission name expresses capability only. It does not grant scope. Future domain services must combine it with jurisdiction, ownership/assignment and workflow-state checks.
+A permission expresses capability only. It does not grant resource scope.
 
 ## Assignment history
 
-`user_roles` and `user_jurisdictions` preserve assignment history. Revocation sets `revoked_at`, `revoked_by_user_id` and a required reason instead of deleting the authorization fact. Partial unique indexes prevent duplicate active assignments while still permitting a later re-assignment after revocation.
+`user_roles` and `user_jurisdictions` preserve assignment history. Revocation sets `revoked_at`, `revoked_by_user_id` and a required reason instead of deleting the authorization fact. Partial unique indexes prevent duplicate active assignments while still permitting later re-assignment.
 
 The explicit local bootstrap mechanism is the only bootstrap exception. When `BOOTSTRAP_USER_ENABLED=true`, the configured local user is idempotently ensured to have `SYSTEM_ADMIN` and `NATIONAL`. Existing credentials are never silently replaced.
 
@@ -100,25 +101,63 @@ The explicit local bootstrap mechanism is the only bootstrap exception. When `BO
 - `STATE`: exactly one state ID and no district ID.
 - `DISTRICT`: both state and district IDs.
 
-District/state consistency is enforced relationally with a composite foreign key to `districts(id, state_id)`, not with user-supplied labels or application-only checks.
+District/state consistency is enforced relationally with a composite foreign key to `districts(id, state_id)`.
 
 Current scope semantics:
 
-- NATIONAL can access state-level and district-level resources anywhere.
-- STATE can access state-level resources in that state and district-level resources whose district belongs to that state.
-- DISTRICT can access only district-level resources for that exact district; it does not imply state-wide access.
-- no applicable active jurisdiction means no scoped-resource access.
+- NATIONAL can access resources anywhere when the required permission is effective.
+- STATE can access institution/district resources in that state.
+- DISTRICT can access institution/district resources for that exact district only.
+- no applicable active jurisdiction means no government-jurisdiction scope.
 
-The self access-check endpoints are useful for UI preflight and testing, but future domain APIs must repeat the authoritative check inside the backend service handling the resource.
+The self access-check endpoints are useful for UI preflight/testing, but domain APIs repeat authoritative scope checks inside their backend service/repository path.
+
+## Institution membership scope
+
+Phase 6 adds `institution_memberships` as a resource ownership/access association.
+
+Membership is **not** a role and does **not** grant any permission. It only contributes exact-institution scope.
+
+For institution reads/updates the effective resource rule is:
+
+```text
+required institution permission
+AND
+(
+  matching NATIONAL/STATE/DISTRICT jurisdiction
+  OR active membership for this exact institution
+)
+```
+
+Examples:
+
+- an `INSTITUTION_ADMIN` with `institution.read` and membership in Institution A can read Institution A;
+- the same user cannot read Institution B without membership/jurisdiction scope;
+- a user with Institution A membership but no `institution.read` still cannot read Institution A;
+- revoking membership removes that ownership scope on the next request without waiting for JWT expiry.
+
+For institution creation, membership cannot authorize a resource that does not yet exist. The caller therefore needs `institution.create` plus government geography scope over the destination district.
+
+When an institution's geography is changed, the caller must also have government scope over the destination district.
+
+## SQL-level visibility and non-disclosure
+
+Institution list/search authorization is pushed into SQL. Inaccessible rows are not loaded and filtered later in application memory.
+
+This is important for both data rows and metadata such as `total` counts. A district-scoped user searching for an institution outside the district receives an empty authorized result rather than a total count that reveals hidden existence.
+
+Protected institution detail lookup uses a non-disclosing policy: inaccessible institution IDs resolve through the same resource-not-found outcome used for an absent record rather than returning a distinguishable `403` that confirms the record exists.
+
+Permission absence remains a normal `403`, because the caller lacks the capability itself rather than merely lacking visibility to a particular protected resource.
 
 ## MFA privilege gate
 
-Privileged government/oversight roles are marked `mfa_required` in the role catalog. Permissions granted only through an MFA-required role are withheld unless both are true:
+Privileged government/oversight roles are marked `mfa_required`. Permissions granted only through an MFA-required role are withheld unless both are true:
 
-1. the account has confirmed TOTP, and
+1. the account has confirmed TOTP; and
 2. the current server session has MFA assurance.
 
-A password-only session that existed before TOTP enrollment does **not** become privileged merely because the user enables TOTP while that session is open. The user must sign out and complete a fresh password + TOTP login. Sessions created after TOTP was already enabled can only be created by the existing MFA login flow, so they carry derived session assurance; `user_sessions.mfa_verified_at` is reserved for an explicit assurance timestamp when a future re-authentication flow needs to mark an existing session.
+A password-only session that existed before TOTP enrollment does not become privileged merely because the user enables TOTP while that session is open. The user must sign out and complete a fresh password + TOTP login.
 
 This prevents a privileged role assigned to an already-open password-only session from silently becoming usable.
 
@@ -126,15 +165,15 @@ This prevents a privileged role assigned to an already-open password-only sessio
 
 `AccessTokenFilter` performs these steps on each bearer-authenticated request:
 
-1. validate the JWT signature/issuer/audience/expiry;
-2. verify the user is active and the server session is current and not revoked;
+1. validate JWT signature/issuer/audience/expiry;
+2. verify the user and server session are active/current;
 3. determine current-session MFA assurance;
-4. resolve effective permission codes from active `user_roles` + `role_permissions` + `permissions`;
+4. resolve effective permission codes from active database grants;
 5. attach only permission authorities to Spring Security.
 
-Method security is enabled. Authorization-administration endpoints use `@PreAuthorize` with granular permissions such as `authorization.read` and `authorization.manage`.
+Method security is enabled. Authorization-administration endpoints use granular authorities such as `authorization.read` and `authorization.manage`.
 
-Future domain code should use permission names and the authorization service's scope helpers. Role codes are metadata, not enforcement primitives.
+Domain services then apply resource-specific scope rules. Frontend hiding/showing of buttons is not an authorization boundary.
 
 ## APIs
 
@@ -159,11 +198,13 @@ POST /api/v1/authz/users/{userId}/jurisdictions
 POST /api/v1/authz/users/{userId}/jurisdictions/{assignmentId}/revoke
 ```
 
-The catalog and user-context administration reads require `authorization.read`. Mutations require `authorization.manage`. The final active `SYSTEM_ADMIN` cannot be revoked.
+Institution domain endpoints are documented separately in `docs/domain/institutions.md` and enforce both capability and resource scope.
 
 ## Error and disclosure policy
 
-Unauthenticated access returns `401`. Authenticated callers that lack an effective permission receive `403` using the existing request-ID-correlated API error shape. Domain services must not use authorization errors to reveal hidden resource existence; where resource visibility itself is protected, the resource service should apply the appropriate non-disclosing response policy.
+Unauthenticated access returns `401`. Authenticated callers that lack an effective permission receive `403` using the request-ID-correlated API error shape.
+
+Where resource visibility itself is protected, domain services use a non-disclosing resource outcome rather than confirming hidden existence. Institution detail is the first implemented example of that policy.
 
 ## Verification
 
@@ -176,8 +217,16 @@ Unauthenticated access returns `401`. Authenticated callers that lack an effecti
 - TOTP enrollment does not silently elevate an old password-only session;
 - a fresh MFA login releases privileged permissions;
 - district/state relational consistency;
-- NATIONAL, STATE and DISTRICT positive and negative boundaries;
-- immediate role revocation and restoration on the same unexpired JWT;
-- cleanup back to the fresh authentication-regression contract.
+- NATIONAL, STATE and DISTRICT positive/negative boundaries;
+- immediate role revocation/restoration on the same unexpired JWT;
+- cleanup back to the authentication-regression contract.
 
-The existing authentication, database-core, browser, design-system and system-health verification remains mandatory in CI.
+`scripts/verify_institutions.mjs` extends that boundary with real domain-resource checks:
+
+- NATIONAL/STATE/DISTRICT institution visibility;
+- exact-institution membership scope;
+- membership without permission cannot bypass RBAC;
+- membership revocation affects the next request;
+- hidden institution detail/search remains non-disclosing.
+
+Existing authentication, database-core, browser and system-health verification remains mandatory in CI.
