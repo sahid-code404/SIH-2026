@@ -1,23 +1,24 @@
 # Database Schema
 
-PostgreSQL + PostGIS is the authoritative NirikshanX data store. Redis is not authoritative and must never be the only copy of business state.
+PostgreSQL + PostGIS is the authoritative NirikshanX data store. Redis is non-authoritative and must never be the only copy of business state.
 
 ## Migration runtime
 
-Spring Boot 4 keeps Flyway auto-configuration in its dedicated Flyway module. The backend therefore uses `spring-boot-starter-flyway` plus Flyway's PostgreSQL database module rather than relying on `flyway-core` alone.
+Spring Boot 4 uses its dedicated Flyway starter plus Flyway's PostgreSQL database module. The local/CI PostGIS image may initialize the PostGIS extension before the application starts; V1 uses `CREATE EXTENSION IF NOT EXISTS postgis`, so that is harmless and does not replace Flyway application history.
 
-The local/CI PostGIS image initializes the PostGIS extension before the application starts. On a fresh NirikshanX database, Flyway still treats the application schema as empty for migration purposes, creates `flyway_schema_history`, then executes V1 and V2 normally. V1 uses `CREATE EXTENSION IF NOT EXISTS postgis`, so a preinstalled PostGIS extension is harmless and does not replace application migration history.
-
-No Flyway baseline marker is configured or required. CI explicitly verifies that `flyway_schema_history` contains successful V1 and V2 records and that the V1 bootstrap object exists, so preinstalled infrastructure cannot silently mask a missing application migration.
+No Flyway baseline marker is configured or required. Fresh environments apply V1 through the current head normally.
 
 ## Migration history
 
 | Migration | Purpose |
 |---|---|
-| `V1__enable_postgis_and_bootstrap.sql` | Confirm/enable PostGIS and create the infrastructure bootstrap marker. |
-| `V2__database_core_geography.sql` | Establish relational database-core rules and canonical `states` / `districts` geography. |
+| `V1__enable_postgis_and_bootstrap.sql` | Confirm/enable PostGIS and create infrastructure bootstrap metadata. |
+| `V2__database_core_geography.sql` | Canonical `states` / `districts`, relational geography and audit-timestamp trigger. |
+| `V3__authentication_core.sql` | Users, server-side refresh sessions, failed-login audit and TOTP authentication state. |
+| `V4__authorization_core.sql` | Roles, permissions, role grants and NATIONAL/STATE/DISTRICT user jurisdictions. |
+| `V5__institutions.sql` | Canonical institutions, PostGIS location/geofence contract and historical institution memberships. |
 
-Flyway migrations are append-only after merge. Never modify an already-deployed migration to change production schema; add a new migration instead.
+Flyway migrations are append-only after merge.
 
 ## Base relational rules
 
@@ -25,139 +26,169 @@ Current and future domain tables follow these rules unless a documented architec
 
 - domain IDs use PostgreSQL `uuid`;
 - business timestamps use `timestamptz`;
-- required values are `NOT NULL`;
+- required values use `NOT NULL`;
 - relationships use explicit foreign keys;
-- business invariants use `UNIQUE` and `CHECK` constraints where the database can enforce them reliably;
-- indexes are added for demonstrated query paths rather than indiscriminately;
-- core business data is modeled relationally;
-- JSONB is not a shortcut for avoiding proper business-data modeling.
-
-`platform_bootstrap` remains infrastructure metadata only and is not a domain table.
+- database-enforceable invariants use `UNIQUE` and `CHECK` constraints;
+- indexes target demonstrated query paths;
+- business data is modeled relationally rather than hidden in generic JSONB;
+- audit `created_at` values are immutable where the shared audit trigger applies.
 
 ## Canonical geography
 
-### `states`
+`states` and `districts` were introduced by V2. District rows reference their parent state, and V4 also adds a composite uniqueness contract on `districts(id, state_id)` so later business tables can enforce district/state consistency relationally.
 
-Purpose: canonical first-level administrative geography catalog.
+No guessed or partial production geography is seeded. Official State/District identifiers must come from an approved authoritative source.
+
+## Authentication and authorization data
+
+V3 and V4 introduce the security-state tables used by the live authentication/authorization modules. Access JWTs do not become the authoritative copy of roles, permissions, jurisdiction or session revocation state.
+
+Important design properties:
+
+- password hashes are stored only as password hashes;
+- refresh-token material is stored as hashes in server-side sessions;
+- role and jurisdiction assignment/revocation history is preserved;
+- role permissions are explicit relational grants;
+- privileged MFA policy is represented in the role/session-assurance model;
+- current authorization remains queryable from PostgreSQL on each request.
+
+Detailed security behavior is documented in `docs/security/authentication.md` and `docs/security/authorization.md`.
+
+## V5 canonical institutions
+
+### `institutions`
+
+Purpose: one canonical institution record used by later scheme, project, inspection, evidence, risk, CCTV, attendance and corrective-action domains.
 
 | Column | Type | Null | Notes |
 |---|---|---:|---|
 | `id` | `uuid` | no | Primary key. |
-| `code` | `varchar(32)` | no | Canonical external code. Unique, uppercase and normalized. |
-| `name` | `varchar(160)` | no | Canonical display name. Trimmed and nonblank. |
-| `created_at` | `timestamptz` | no | Creation timestamp. Immutable after insert. |
-| `updated_at` | `timestamptz` | no | Maintained by database trigger on update. |
+| `code` | `varchar(64)` | no | Globally unique normalized uppercase institution code. |
+| `legal_name` | `varchar(240)` | no | Trimmed legal name. |
+| `display_name` | `varchar(200)` | no | Trimmed display name. |
+| `institution_type` | `varchar(64)` | no | Normalized policy code; closed taxonomy intentionally not invented. |
+| `registration_number` | `varchar(120)` | yes | Optional; case-insensitively unique when present. |
+| `status` | `varchar(64)` | no | Normalized policy/lifecycle code; closed taxonomy deferred to authoritative policy. |
+| `state_id` | `uuid` | no | FK to canonical state. |
+| `district_id` | `uuid` | no | Composite FK with `state_id` to canonical district/state pair. |
+| `address` | `varchar(500)` | no | Trimmed address text. |
+| `postal_code` | `varchar(20)` | no | Trimmed postal code. |
+| `location` | `geography(Point,4326)` | no | Canonical WGS84 institution point. |
+| `geofence_radius_m` | `integer` | no | Positive geofence radius in metres. |
+| `primary_contact_name` | `varchar(160)` | no | Explicit contact field. |
+| `primary_contact_email` | `varchar(320)` | yes | Lowercase normalized when present. |
+| `primary_contact_phone` | `varchar(32)` | yes | Trimmed when present. |
+| `verification_status` | `varchar(64)` | no | Normalized policy code; closed taxonomy intentionally deferred. |
+| `created_at` | `timestamptz` | no | Immutable creation timestamp. |
+| `updated_at` | `timestamptz` | no | Maintained by shared audit trigger. |
 
-Additional invariants:
+### Geography integrity
 
-- `code` is unique;
-- `code` permits uppercase letters, digits, `.`, `_` and `-`, which covers common official-code shapes without inventing a source-specific scheme;
-- state names are case-insensitively unique through `uq_states_name_ci`;
-- `updated_at >= created_at`.
-
-### `districts`
-
-Purpose: canonical district catalog beneath `states`.
-
-| Column | Type | Null | Notes |
-|---|---|---:|---|
-| `id` | `uuid` | no | Primary key. |
-| `state_id` | `uuid` | no | Required FK to `states.id`. |
-| `code` | `varchar(32)` | no | Canonical external code. Unique, uppercase and normalized. |
-| `name` | `varchar(160)` | no | Canonical district name. Trimmed and nonblank. |
-| `created_at` | `timestamptz` | no | Creation timestamp. Immutable after insert. |
-| `updated_at` | `timestamptz` | no | Maintained by database trigger on update. |
-
-Relationship behavior:
+The institution schema does not trust a client-supplied district/state pairing. It uses:
 
 ```text
-states 1 ─────────── * districts
+(state_id)                 -> states(id)
+(district_id, state_id)    -> districts(id, state_id)
 ```
 
-`districts.state_id` uses `ON UPDATE RESTRICT` and `ON DELETE RESTRICT`. A state cannot be deleted while a district references it.
+Therefore a district cannot be attached to an institution under the wrong state even if application validation is bypassed.
 
-Indexes/invariants:
+### PostGIS contract
 
-- district `code` is unique;
-- district name is case-insensitively unique within a state through `uq_districts_state_name_ci`;
-- `idx_districts_state_name` supports State → District lookup/sorting;
-- `updated_at >= created_at`.
-
-## Audit timestamp maintenance
-
-`V2` installs `nirikshanx_maintain_audit_timestamps()` and update triggers for `states` and `districts`.
-
-The trigger:
-
-1. rejects attempts to mutate `created_at`;
-2. replaces `updated_at` with the database wall-clock timestamp for every update.
-
-This keeps timestamp behavior consistent even when a future data-maintenance operation bypasses application code.
-
-## Geography data policy
-
-The schema deliberately ships with **no guessed or partial State/District production seed data**.
-
-`code` is intended to hold the identifier from the authoritative geography source selected for the deployment. Until that source and its versioning/update policy are explicitly selected, NirikshanX must not present a hand-built partial catalog as authoritative government geography.
-
-Tests create temporary geography rows inside a transaction and roll them back.
-
-Future business tables must reference `state_id` / `district_id` instead of repeating raw state or district text.
-
-## PostGIS contract
-
-PostGIS is confirmed by `V1`. No institution table is created in Database Core because Institutions is a later vertical phase.
-
-When the Institution phase is implemented, its location contract is:
+`location` is a real PostGIS geography point:
 
 ```sql
 geography(Point,4326)
 ```
 
-with a spatial index appropriate for real query paths. PostGIS will support:
+V5 also enforces valid longitude/latitude ranges and creates:
 
-- distance calculations;
-- geofence checks;
-- nearby-inspector candidate calculation;
-- map filtering.
+```text
+idx_institutions_location  USING GIST(location)
+```
 
-The future spatial column/index must be introduced with the Institution migration rather than as an unused placeholder now.
+This is the foundation for later real distance/geofence/nearby/map queries; Phase 6 does not fake those later domain features.
+
+### Institution query indexes
+
+V5 includes indexes for actual Phase 6 access/search patterns:
+
+- `(state_id, district_id, display_name, id)` for scoped registry queries;
+- lowercase code, display name and legal name search indexes;
+- lowercase registration-number search index;
+- case-insensitive unique registration number when present;
+- GiST location index.
+
+## `institution_memberships`
+
+Membership is a historical resource-scope association between a user and an institution. It is **not** a permission grant.
+
+Important columns:
+
+```text
+id
+institution_id
+user_id
+assigned_by_user_id
+assignment_source
+assigned_at
+revoked_at
+revoked_by_user_id
+revocation_reason
+```
+
+Important invariants:
+
+- FK to institution and users;
+- actor FKs for assignment/revocation where present;
+- active duplicate membership is prevented by a partial unique index on `(institution_id, user_id)` where `revoked_at IS NULL`;
+- revocation is historical/non-destructive and requires a reason;
+- active user/institution lookup and assignment-history indexes are present;
+- deleting referenced institutions/users is restricted rather than silently erasing history.
+
+Authorization still requires the relevant RBAC permission. Active membership only contributes exact-institution ownership scope.
+
+## Policy-code handling
+
+The master product specification names `institution_type`, `status` and `verification_status` but does not provide authoritative enumerations. V5 therefore constrains them to normalized uppercase policy-code syntax without hardcoding guessed government values.
+
+This is intentional. A later approved data dictionary can be introduced with its own versioned catalog/migration instead of rewriting historical V5 semantics.
 
 ## Executable verification
 
-`scripts/verify_database_core.sql` is executed by the full-stack CI job against the real Compose PostgreSQL/PostGIS instance.
+Full-stack CI executes the database/security verification against the real Compose PostgreSQL/PostGIS instance.
 
-It verifies:
+`scripts/verify_database_core.sql` verifies V1/V2 relational and timestamp invariants.
 
-- Flyway schema history exists;
-- V1 and V2 are both recorded as successful;
-- the V1 `platform_bootstrap` object exists;
-- both geography tables exist;
-- UUID and `timestamptz` contracts;
-- required indexes and timestamp triggers;
-- valid State → District insertion;
-- State and District `updated_at` advance after update;
-- State and District `created_at` are immutable;
-- duplicate codes fail;
-- malformed/padded codes and names fail;
-- case-insensitive duplicate names fail;
-- missing parent states fail;
-- `ON DELETE RESTRICT` prevents deletion of a referenced state.
+`scripts/verify_authorization.mjs` verifies V4 role/permission/jurisdiction behavior and MFA gating.
 
-PostgreSQL reports the deliberate `ON DELETE RESTRICT` case as a `restrict_violation`; the verifier catches that condition explicitly rather than weakening the foreign-key behavior.
+`scripts/verify_institutions.mjs` verifies, among other things:
 
-The script wraps all test fixtures in `BEGIN` / `ROLLBACK`, so CI never turns temporary verification rows into seed data.
+- successful Flyway V5;
+- institution and membership tables exist;
+- `location` is PostGIS `geography(Point,4326)`, not geometry;
+- SRID 4326 and GiST location index;
+- real point/geofence persistence;
+- database-level district/state mismatch rejection;
+- NATIONAL/STATE/DISTRICT institution visibility boundaries;
+- non-disclosing inaccessible detail/search behavior;
+- membership ownership scope without permission bypass;
+- immediate membership revocation;
+- isolated fixture cleanup.
 
-## Explicitly not present yet
+`scripts/verify_authentication.mjs` runs after the institution verifier to ensure Phase 6 leaves authentication/session state compatible with the existing fresh-stack security contract.
 
-Database Core does not create:
+## Not present yet
 
-- `users` or sessions — Authentication phase;
-- roles, permissions or jurisdictions — Authorization phase;
-- institutions — Institution phase;
-- schemes/projects;
-- inspections/evidence;
+V5 intentionally stops before:
+
+- schemes / institution-scheme enrollments;
+- projects / milestones;
+- inspection templates/lifecycle;
+- inspector profiles/assignments;
+- evidence/proof-of-presence;
+- anomaly/risk;
 - CCTV/attendance;
-- anomaly/risk tables.
+- corrective actions/reports/integrations.
 
-Those schemas will be introduced only with their real vertical features and associated backend/API/authorization/frontend/tests.
+Those schemas are introduced only with their real vertical features.

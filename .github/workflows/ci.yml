@@ -101,6 +101,8 @@ jobs:
           docker compose exec -T postgres sh -lc 'psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB"' < scripts/verify_database_core.sql
       - name: Verify authorization policy and jurisdiction boundaries
         run: node scripts/verify_authorization.mjs
+      - name: Verify institution model, PostGIS and scoped access
+        run: node scripts/verify_institutions.mjs
       - name: Verify authentication and session security
         run: node scripts/verify_authentication.mjs
       - name: Verify responsive browser behavior
@@ -133,7 +135,7 @@ jobs:
       - name: Upload UI regression render evidence
         uses: actions/upload-artifact@v4
         with:
-          name: phase-05-regression-ui-renders
+          name: phase-06-regression-ui-renders
           path: /tmp/nirikshanx-ui/*.png
           if-no-files-found: error
           retention-days: 7
