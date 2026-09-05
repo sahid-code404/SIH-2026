@@ -90,9 +90,9 @@ public class AuthRepository {
     public void insertSession(SessionRow session) {
         jdbc.sql("""
                 INSERT INTO user_sessions (
-                    id, user_id, token_family_id, user_agent, ip_hash, expires_at, last_seen_at
+                    id, user_id, token_family_id, user_agent, ip_hash, expires_at, last_seen_at, created_at, updated_at
                 ) VALUES (
-                    :id, :userId, :tokenFamilyId, :userAgent, :ipHash, :expiresAt, :lastSeenAt
+                    :id, :userId, :tokenFamilyId, :userAgent, :ipHash, :expiresAt, :lastSeenAt, :createdAt, :updatedAt
                 )
                 """)
                 .param("id", session.id())
@@ -102,6 +102,8 @@ public class AuthRepository {
                 .param("ipHash", session.ipHash())
                 .param("expiresAt", dbTime(session.expiresAt()))
                 .param("lastSeenAt", dbTime(session.lastSeenAt()))
+                .param("createdAt", dbTime(session.createdAt()))
+                .param("updatedAt", dbTime(session.updatedAt()))
                 .update();
     }
 
