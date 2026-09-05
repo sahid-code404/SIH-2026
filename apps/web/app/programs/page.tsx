@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useAuth } from "@/components/auth-provider";
 import {
   EnrollmentForm,
@@ -83,6 +83,14 @@ export default function ProgramsPage() {
   const canProjectCreate = permissions.has("project.create");
   const canInstitutionRead = permissions.has("institution.read");
   const canReadAny = canSchemeRead || canEnrollmentRead || canProjectRead;
+  const activeTab: Tab =
+    (tab === "schemes" && canSchemeRead) || (tab === "enrollments" && canEnrollmentRead) || (tab === "projects" && canProjectRead)
+      ? tab
+      : canSchemeRead
+        ? "schemes"
+        : canEnrollmentRead
+          ? "enrollments"
+          : "projects";
 
   useEffect(() => {
     if (status === "anonymous") router.replace("/login");
@@ -152,15 +160,6 @@ export default function ProgramsPage() {
     const timer = window.setTimeout(() => void load(), 0);
     return () => window.clearTimeout(timer);
   }, [authorization, canReadAny, load]);
-
-  useEffect(() => {
-    if (!authorization) return;
-    const allowedTabs: Tab[] = [];
-    if (canSchemeRead) allowedTabs.push("schemes");
-    if (canEnrollmentRead) allowedTabs.push("enrollments");
-    if (canProjectRead) allowedTabs.push("projects");
-    if (!allowedTabs.includes(tab) && allowedTabs[0]) setTab(allowedTabs[0]);
-  }, [authorization, canEnrollmentRead, canProjectRead, canSchemeRead, tab]);
 
   function openEditor(next: typeof editor) {
     setEditor(next);
@@ -292,15 +291,15 @@ export default function ProgramsPage() {
       {error ? <div className="nx-program-width nx-program-state"><InlineNotice tone="danger" title="Program request failed">{error}</InlineNotice></div> : null}
 
       <div className="nx-program-width nx-program-tabs" role="tablist" aria-label="Program registry sections">
-        {canSchemeRead ? <Button variant={tab === "schemes" ? "primary" : "ghost"} onClick={() => setTab("schemes")} role="tab" aria-selected={tab === "schemes"}>Schemes</Button> : null}
-        {canEnrollmentRead ? <Button variant={tab === "enrollments" ? "primary" : "ghost"} onClick={() => setTab("enrollments")} role="tab" aria-selected={tab === "enrollments"}>Enrollments</Button> : null}
-        {canProjectRead ? <Button variant={tab === "projects" ? "primary" : "ghost"} onClick={() => setTab("projects")} role="tab" aria-selected={tab === "projects"}>Projects</Button> : null}
+        {canSchemeRead ? <Button variant={activeTab === "schemes" ? "primary" : "ghost"} onClick={() => setTab("schemes")} role="tab" aria-selected={activeTab === "schemes"}>Schemes</Button> : null}
+        {canEnrollmentRead ? <Button variant={activeTab === "enrollments" ? "primary" : "ghost"} onClick={() => setTab("enrollments")} role="tab" aria-selected={activeTab === "enrollments"}>Enrollments</Button> : null}
+        {canProjectRead ? <Button variant={activeTab === "projects" ? "primary" : "ghost"} onClick={() => setTab("projects")} role="tab" aria-selected={activeTab === "projects"}>Projects</Button> : null}
       </div>
 
       {editor === "scheme-create" || editor === "scheme-edit" ? (
         <Card className="nx-program-width nx-program-editor" as="section">
           <ProgramSectionHeading title={editor === "scheme-edit" ? "Edit scheme" : "Create scheme"} description="Scheme status and codes remain normalized free policy codes; the UI does not invent an authoritative government catalog." />
-          <SchemeForm value={editingScheme} busy={busy} submitLabel={editingScheme ? "Save scheme" : "Create scheme"} onSubmit={saveScheme} onCancel={() => setEditor(null)} />
+          <SchemeForm key={editingScheme?.id ?? "scheme-create"} value={editingScheme} busy={busy} submitLabel={editingScheme ? "Save scheme" : "Create scheme"} onSubmit={saveScheme} onCancel={() => setEditor(null)} />
         </Card>
       ) : null}
 
@@ -310,7 +309,7 @@ export default function ProgramsPage() {
           {!editingEnrollment && (institutions.length === 0 || schemeItems.length === 0) ? (
             <InlineNotice tone="warning" title="Enrollment prerequisites unavailable">At least one authorized institution and one readable scheme are required before an enrollment can be created.</InlineNotice>
           ) : (
-            <EnrollmentForm value={editingEnrollment} institutions={institutions} schemes={schemeItems} busy={busy} onSubmit={saveEnrollment} onCancel={() => setEditor(null)} />
+            <EnrollmentForm key={editingEnrollment?.id ?? "enrollment-create"} value={editingEnrollment} institutions={institutions} schemes={schemeItems} busy={busy} onSubmit={saveEnrollment} onCancel={() => setEditor(null)} />
           )}
         </Card>
       ) : null}
@@ -321,12 +320,12 @@ export default function ProgramsPage() {
           {enrollmentItems.filter((item) => !item.endedOn).length === 0 ? (
             <InlineNotice tone="warning" title="No active enrollment available">Create or obtain access to an active institution scheme enrollment before creating a project.</InlineNotice>
           ) : (
-            <ProjectForm enrollments={enrollmentItems} busy={busy} onSubmit={(payload) => createProject(payload as ProjectCreatePayload)} onCancel={() => setEditor(null)} />
+            <ProjectForm key="project-create" enrollments={enrollmentItems} busy={busy} onSubmit={(payload) => createProject(payload as ProjectCreatePayload)} onCancel={() => setEditor(null)} />
           )}
         </Card>
       ) : null}
 
-      {tab === "schemes" && canSchemeRead ? (
+      {activeTab === "schemes" && canSchemeRead ? (
         <section className="nx-program-width nx-program-registry" aria-busy={loading}>
           <ProgramSectionHeading
             title="Scheme catalog"
@@ -354,7 +353,7 @@ export default function ProgramsPage() {
         </section>
       ) : null}
 
-      {tab === "enrollments" && canEnrollmentRead ? (
+      {activeTab === "enrollments" && canEnrollmentRead ? (
         <section className="nx-program-width nx-program-registry" aria-busy={loading}>
           <ProgramSectionHeading
             title="Institution enrollments"
@@ -375,7 +374,7 @@ export default function ProgramsPage() {
         </section>
       ) : null}
 
-      {tab === "projects" && canProjectRead ? (
+      {activeTab === "projects" && canProjectRead ? (
         <section className="nx-program-width nx-program-registry" aria-busy={loading}>
           <ProgramSectionHeading
             title="Projects"
@@ -418,7 +417,7 @@ function ProgramsHeader() {
   );
 }
 
-function ProgramSectionHeading({ title, description, action }: { title: string; description: string; action?: React.ReactNode }) {
+function ProgramSectionHeading({ title, description, action }: { title: string; description: string; action?: ReactNode }) {
   return <div className="nx-program-section-heading"><div><h2>{title}</h2><p>{description}</p></div>{action ? <div>{action}</div> : null}</div>;
 }
 
