@@ -1,6 +1,8 @@
 package org.nirikshanx.auth;
 
 import java.time.Instant;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -54,7 +56,7 @@ public class AuthRepository {
 
     public void updateLastLogin(UUID userId, Instant now) {
         jdbc.sql("UPDATE users SET last_login_at = :now WHERE id = :userId")
-                .param("now", now)
+                .param("now", dbTime(now))
                 .param("userId", userId)
                 .update();
     }
@@ -62,7 +64,7 @@ public class AuthRepository {
     public void updatePassword(UUID userId, String passwordHash, Instant now) {
         jdbc.sql("UPDATE users SET password_hash = :passwordHash, password_changed_at = :now WHERE id = :userId")
                 .param("passwordHash", passwordHash)
-                .param("now", now)
+                .param("now", dbTime(now))
                 .param("userId", userId)
                 .update();
     }
@@ -80,7 +82,7 @@ public class AuthRepository {
                 """)
                 .param("sessionId", sessionId)
                 .param("userId", userId)
-                .param("now", now)
+                .param("now", dbTime(now))
                 .query(PrincipalRow.class)
                 .optional();
     }
@@ -98,14 +100,14 @@ public class AuthRepository {
                 .param("tokenFamilyId", session.tokenFamilyId())
                 .param("userAgent", session.userAgent())
                 .param("ipHash", session.ipHash())
-                .param("expiresAt", session.expiresAt())
-                .param("lastSeenAt", session.lastSeenAt())
+                .param("expiresAt", dbTime(session.expiresAt()))
+                .param("lastSeenAt", dbTime(session.lastSeenAt()))
                 .update();
     }
 
     public void touchSession(UUID sessionId, Instant now) {
         jdbc.sql("UPDATE user_sessions SET last_seen_at = :now WHERE id = :sessionId AND revoked_at IS NULL")
-                .param("now", now)
+                .param("now", dbTime(now))
                 .param("sessionId", sessionId)
                 .update();
     }
@@ -134,7 +136,7 @@ public class AuthRepository {
                  ORDER BY last_seen_at DESC, created_at DESC
                 """)
                 .param("userId", userId)
-                .param("now", now)
+                .param("now", dbTime(now))
                 .query(SessionRow.class)
                 .list();
     }
@@ -147,7 +149,7 @@ public class AuthRepository {
                    AND user_id = :userId
                    AND revoked_at IS NULL
                 """)
-                .param("now", now)
+                .param("now", dbTime(now))
                 .param("reason", reason)
                 .param("sessionId", sessionId)
                 .param("userId", userId)
@@ -161,7 +163,7 @@ public class AuthRepository {
                  WHERE user_id = :userId
                    AND revoked_at IS NULL
                 """)
-                .param("now", now)
+                .param("now", dbTime(now))
                 .param("reason", reason)
                 .param("userId", userId)
                 .update();
@@ -175,7 +177,7 @@ public class AuthRepository {
                    AND id <> :currentSessionId
                    AND revoked_at IS NULL
                 """)
-                .param("now", now)
+                .param("now", dbTime(now))
                 .param("reason", reason)
                 .param("userId", userId)
                 .param("currentSessionId", currentSessionId)
@@ -193,8 +195,8 @@ public class AuthRepository {
                 .param("id", token.id())
                 .param("sessionId", token.sessionId())
                 .param("tokenHash", token.tokenHash())
-                .param("issuedAt", token.issuedAt())
-                .param("expiresAt", token.expiresAt())
+                .param("issuedAt", dbTime(token.issuedAt()))
+                .param("expiresAt", dbTime(token.expiresAt()))
                 .update();
     }
 
@@ -218,7 +220,7 @@ public class AuthRepository {
                    AND consumed_at IS NULL
                    AND revoked_at IS NULL
                 """)
-                .param("now", now)
+                .param("now", dbTime(now))
                 .param("replacementId", replacementId)
                 .param("tokenId", tokenId)
                 .update();
@@ -231,7 +233,7 @@ public class AuthRepository {
                  WHERE session_id = :sessionId
                    AND revoked_at IS NULL
                 """)
-                .param("now", now)
+                .param("now", dbTime(now))
                 .param("sessionId", sessionId)
                 .update();
     }
@@ -245,7 +247,7 @@ public class AuthRepository {
                    AND created_at >= :since
                 """)
                 .param("subjectHash", subjectHash)
-                .param("since", since)
+                .param("since", dbTime(since))
                 .query(Long.class)
                 .single();
         return count == null ? 0 : count;
@@ -267,7 +269,7 @@ public class AuthRepository {
                 .param("reason", reason)
                 .param("ipHash", ipHash)
                 .param("userAgent", userAgent)
-                .param("now", now)
+                .param("now", dbTime(now))
                 .update();
     }
 
@@ -309,7 +311,7 @@ public class AuthRepository {
                 """)
                 .param("userId", userId)
                 .param("encryptedSecret", encryptedSecret)
-                .param("expiresAt", expiresAt)
+                .param("expiresAt", dbTime(expiresAt))
                 .update();
     }
 
@@ -321,7 +323,7 @@ public class AuthRepository {
                        last_counter = NULL
                  WHERE user_id = :userId
                 """)
-                .param("now", now)
+                .param("now", dbTime(now))
                 .param("userId", userId)
                 .update();
     }
@@ -344,10 +346,10 @@ public class AuthRepository {
                 .param("id", challenge.id())
                 .param("userId", challenge.userId())
                 .param("tokenHash", challenge.tokenHash())
-                .param("expiresAt", challenge.expiresAt())
+                .param("expiresAt", dbTime(challenge.expiresAt()))
                 .param("ipHash", challenge.ipHash())
                 .param("userAgent", challenge.userAgent())
-                .param("createdAt", challenge.createdAt())
+                .param("createdAt", dbTime(challenge.createdAt()))
                 .update();
     }
 
@@ -365,9 +367,13 @@ public class AuthRepository {
 
     public void consumeMfaChallenge(UUID challengeId, Instant now) {
         jdbc.sql("UPDATE mfa_login_challenges SET consumed_at = :now WHERE id = :challengeId AND consumed_at IS NULL")
-                .param("now", now)
+                .param("now", dbTime(now))
                 .param("challengeId", challengeId)
                 .update();
+    }
+
+    private static OffsetDateTime dbTime(Instant value) {
+        return OffsetDateTime.ofInstant(value, ZoneOffset.UTC);
     }
 
     public record UserRow(
