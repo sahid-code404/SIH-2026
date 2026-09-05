@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useCallback, useEffect, useState } from "react";
+import { AuthorizationContextCard } from "@/components/authorization-context-card";
 import { useAuth } from "@/components/auth-provider";
 import { Button, Card, Field, InlineNotice, Input, StatusBadge } from "@/components/ui/primitives";
 
@@ -137,7 +138,11 @@ export default function AccountPage() {
       setEnrollment(null);
       setTotpCode("");
       await refresh();
-      setNotice({ tone: "success", title: "Authenticator enabled", message: "Future sign-ins require a fresh TOTP code after the password step." });
+      setNotice({
+        tone: "success",
+        title: "Authenticator enabled",
+        message: "Future sign-ins require a fresh TOTP code. Sign out and sign in again before using permissions that require MFA assurance.",
+      });
     } catch (reason) {
       setNotice({ tone: "danger", title: "MFA not enabled", message: reason instanceof Error ? reason.message : "Unable to confirm the code" });
     } finally {
@@ -164,16 +169,18 @@ export default function AccountPage() {
 
       <section className="nx-account-hero">
         <div>
-          <span className="nx-page-meta">Phase 4 · Authentication</span>
+          <span className="nx-page-meta">Phase 5 · Authorization</span>
           <h1>{user.displayName}</h1>
           <p>{user.email}</p>
         </div>
-        <StatusBadge tone={user.mfaEnabled ? "success" : "warning"}>{user.mfaEnabled ? "MFA enabled" : "MFA optional"}</StatusBadge>
+        <StatusBadge tone={user.mfaEnabled ? "success" : "warning"}>{user.mfaEnabled ? "MFA enabled" : "MFA not enabled"}</StatusBadge>
       </section>
 
       {notice ? <InlineNotice tone={notice.tone} title={notice.title}>{notice.message}</InlineNotice> : null}
 
       <div className="nx-account-grid">
+        <AuthorizationContextCard />
+
         <Card className="nx-account-card" as="section">
           <div className="nx-account-card-heading">
             <div><h2>Active sessions</h2><p>Server-backed sessions become invalid immediately when revoked.</p></div>
@@ -206,7 +213,7 @@ export default function AccountPage() {
           </div>
 
           {user.mfaEnabled ? (
-            <InlineNotice tone="success" title="Two-step sign-in is active">A fresh six-digit authenticator code is required after your password.</InlineNotice>
+            <InlineNotice tone="success" title="Two-step sign-in is active">A fresh six-digit authenticator code is required after your password on future sign-ins.</InlineNotice>
           ) : enrollment ? (
             <form className="nx-auth-form" onSubmit={confirmMfa}>
               <div className="nx-mfa-secret">
@@ -237,7 +244,7 @@ export default function AccountPage() {
         </Card>
 
         <Card className="nx-account-card" as="section">
-          <div className="nx-account-card-heading"><div><h2>Identity details</h2><p>Authorization roles and jurisdiction are intentionally introduced in the next phase.</p></div></div>
+          <div className="nx-account-card-heading"><div><h2>Identity details</h2><p>Authentication identity remains separate from the current authorization context shown above.</p></div></div>
           <dl className="nx-identity-list">
             <div><dt>User ID</dt><dd><code>{user.id}</code></dd></div>
             <div><dt>Language</dt><dd>{user.preferredLanguage}</dd></div>

@@ -232,6 +232,87 @@
   min-width: 0;
 }
 
+.nx-authz-card {
+  grid-column: 1 / -1;
+}
+
+.nx-authz-section {
+  display: grid;
+  gap: .65rem;
+  padding-top: .25rem;
+}
+
+.nx-authz-section + .nx-authz-section,
+.nx-authz-withheld {
+  padding-top: 1rem;
+  border-top: 1px solid var(--nx-border);
+}
+
+.nx-authz-section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.nx-authz-section-heading > span {
+  min-width: 2rem;
+  padding: .15rem .5rem;
+  text-align: center;
+  border-radius: 999px;
+  color: var(--nx-text-secondary);
+  background: var(--nx-surface-muted);
+  border: 1px solid var(--nx-border);
+  font-size: .8rem;
+}
+
+.nx-authz-chips,
+.nx-authz-permissions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .45rem;
+}
+
+.nx-authz-chip,
+.nx-authz-permissions code {
+  max-width: 100%;
+  padding: .38rem .62rem;
+  border-radius: var(--nx-radius-md);
+  border: 1px solid var(--nx-border);
+  background: var(--nx-surface-muted);
+  overflow-wrap: anywhere;
+}
+
+.nx-authz-chip {
+  font-size: .85rem;
+  color: var(--nx-text-secondary);
+}
+
+.nx-authz-permissions code {
+  font-size: .78rem;
+  color: var(--nx-text-primary);
+}
+
+.nx-authz-withheld {
+  color: var(--nx-text-secondary);
+}
+
+.nx-authz-withheld summary {
+  width: fit-content;
+  cursor: pointer;
+  font-weight: 650;
+}
+
+.nx-authz-withheld[open] summary {
+  margin-bottom: .75rem;
+}
+
+.nx-authz-empty,
+.nx-authz-loading {
+  color: var(--nx-text-muted);
+  font-size: .9rem;
+}
+
 .nx-auth-loading {
   width: min(100%, 78rem);
   margin: 0 auto;
