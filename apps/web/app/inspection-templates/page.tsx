@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/components/auth-provider";
 import { useWorkspace } from "@/components/workspace-provider";
@@ -45,6 +46,7 @@ function versionLabel(template: TemplateSummary) {
 }
 
 export default function InspectionTemplatesPage() {
+  const router = useRouter();
   const { request } = useAuth();
   const { authorization, privilegeRestricted } = useWorkspace();
   const [data, setData] = useState<TemplatePage | null>(null);
@@ -111,7 +113,7 @@ export default function InspectionTemplatesPage() {
       });
       if (!response.ok) throw new Error(await responseMessage(response));
       const created = (await response.json()) as TemplateDetail;
-      window.location.assign(`/inspection-templates/${created.template.id}`);
+      router.push(`/inspection-templates/${created.template.id}`);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Inspection template was not created");
     } finally {
