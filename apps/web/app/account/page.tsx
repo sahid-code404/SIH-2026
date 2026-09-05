@@ -169,7 +169,7 @@ export default function AccountPage() {
 
       <section className="nx-account-hero">
         <div>
-          <span className="nx-page-meta">Phase 5 · Authorization</span>
+          <span className="nx-page-meta">Account & security</span>
           <h1>{user.displayName}</h1>
           <p>{user.email}</p>
         </div>
