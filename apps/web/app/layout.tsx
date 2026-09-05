@@ -3,6 +3,7 @@ import "./globals.css";
 import "./auth.css";
 import "./institutions.css";
 import "./programs.css";
+import "./institution-programs.css";
 import { AuthProvider } from "@/components/auth-provider";
 import { ServiceWorkerRegistration } from "@/components/service-worker-registration";
 
