@@ -17,7 +17,7 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (status === "authenticated") router.replace("/account");
+    if (status === "authenticated") router.replace("/");
   }, [router, status]);
 
   async function submitPassword(event: FormEvent<HTMLFormElement>) {
@@ -30,7 +30,7 @@ export default function LoginPage() {
         setChallengeToken(result.challengeToken);
         setCode("");
       } else {
-        router.replace("/account");
+        router.replace("/");
       }
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Unable to sign in");
@@ -46,7 +46,7 @@ export default function LoginPage() {
     setError(null);
     try {
       await verifyMfa(challengeToken, code);
-      router.replace("/account");
+      router.replace("/");
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Unable to verify code");
     } finally {
@@ -71,7 +71,7 @@ export default function LoginPage() {
           <p>
             {challengeToken
               ? "Enter the six-digit code from your authenticator app."
-              : "One account provides access to the workspace your later authorization policy permits."}
+              : "One account opens the workspace selected from your live roles, permissions and resource scope."}
           </p>
         </div>
 
