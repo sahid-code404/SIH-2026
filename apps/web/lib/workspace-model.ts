@@ -54,7 +54,7 @@ export type WorkspaceDefinition = {
 export type NavigationItem = {
   href: string;
   label: string;
-  icon: "workspace" | "institutions" | "programs" | "account";
+  icon: "workspace" | "institutions" | "programs" | "templates" | "account";
 };
 
 type WorkspaceTemplate = Omit<WorkspaceDefinition, "primaryRoleCode" | "primaryRoleName">;
@@ -176,6 +176,10 @@ export function buildNavigation(context: AuthorizationContext): NavigationItem[]
     permissions.has("milestone.read")
   ) {
     items.push({ href: "/programs", label: "Programs", icon: "programs" });
+  }
+
+  if (permissions.has("inspection.read")) {
+    items.push({ href: "/inspection-templates", label: "Templates", icon: "templates" });
   }
 
   items.push({ href: "/account", label: "Account", icon: "account" });

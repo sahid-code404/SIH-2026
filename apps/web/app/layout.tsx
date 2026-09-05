@@ -5,6 +5,7 @@ import "./institutions.css";
 import "./programs.css";
 import "./institution-programs.css";
 import "./workspace.css";
+import "./inspection-templates.css";
 import { AuthProvider } from "@/components/auth-provider";
 import { RoleAwareShell } from "@/components/role-aware-shell";
 import { ServiceWorkerRegistration } from "@/components/service-worker-registration";
