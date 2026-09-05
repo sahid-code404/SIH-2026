@@ -1,5 +1,6 @@
 package org.nirikshanx.auth;
 
+import java.time.Instant;
 import java.util.UUID;
 
 public record AuthPrincipal(
@@ -7,5 +8,5 @@ public record AuthPrincipal(
         UUID sessionId,
         String email,
         String displayName,
-        boolean mfaVerified) {
+        Instant mfaVerifiedAt) {
 }
