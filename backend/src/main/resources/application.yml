@@ -19,6 +19,25 @@ spring:
       connect-timeout: 2s
       timeout: 2s
 
+nirikshanx:
+  auth:
+    access-token-ttl: ${AUTH_ACCESS_TOKEN_TTL:PT10M}
+    session-ttl: ${AUTH_SESSION_TTL:P30D}
+    mfa-challenge-ttl: ${AUTH_MFA_CHALLENGE_TTL:PT5M}
+    issuer: ${AUTH_JWT_ISSUER:nirikshanx}
+    audience: ${AUTH_JWT_AUDIENCE:nirikshanx-web}
+    jwt-secret-base64: ${AUTH_JWT_SECRET_BASE64:}
+    mfa-encryption-key-base64: ${AUTH_MFA_ENCRYPTION_KEY_BASE64:}
+    cookie-secure: ${AUTH_COOKIE_SECURE:false}
+    login-max-failures: ${AUTH_LOGIN_MAX_FAILURES:5}
+    login-window: ${AUTH_LOGIN_WINDOW:PT15M}
+  bootstrap-user:
+    enabled: ${BOOTSTRAP_USER_ENABLED:false}
+    email: ${BOOTSTRAP_USER_EMAIL:}
+    display-name: ${BOOTSTRAP_USER_DISPLAY_NAME:}
+    password: ${BOOTSTRAP_USER_PASSWORD:}
+    preferred-language: ${BOOTSTRAP_USER_PREFERRED_LANGUAGE:en}
+
 server:
   port: 8080
   shutdown: graceful
