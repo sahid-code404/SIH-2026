@@ -110,6 +110,7 @@ const loginResult = await evaluate(`fetch('/backend-api/api/v1/auth/login', {
 }).then(async (response) => ({ status: response.status, body: await response.json() }))`);
 assert.equal(loginResult.status, 200, `Bootstrap browser login failed: ${JSON.stringify(loginResult.body)}`);
 assert.equal(loginResult.body.status, "AUTHENTICATED", "Fresh bootstrap login should establish a password-only session before TOTP enrollment");
+assert.ok(loginResult.body.accessToken, "Browser login did not return an access token for cleanup");
 
 await send("Emulation.setDeviceMetricsOverride", {
   width: 1440,
@@ -166,6 +167,15 @@ assert.notEqual(mobile.mobileNav, "none", "Mobile workspace navigation should be
 assert.equal(mobile.sidebar, "none", "Desktop workspace sidebar should be hidden at 390px");
 assert.deepEqual(mobile.navLinks, ["/", "/account"], "Mobile navigation must use the same effective-permission boundary");
 await screenshot("mobile-390x844.png");
+
+// Clean up the real browser session so later integration verifiers start from the
+// same bootstrap state. The token is kept only in this Node process, never browser storage.
+const logoutStatus = await evaluate(`fetch('/backend-api/api/v1/auth/logout', {
+  method: 'POST',
+  credentials: 'include',
+  headers: { Authorization: 'Bearer ${loginResult.body.accessToken}' }
+}).then((response) => response.status)`);
+assert.equal(logoutStatus, 204, `Browser session cleanup failed with status ${logoutStatus}`);
 
 console.log("Browser smoke passed", { loginDesktop, loginMobile, desktop, mobile });
 socket.close();
