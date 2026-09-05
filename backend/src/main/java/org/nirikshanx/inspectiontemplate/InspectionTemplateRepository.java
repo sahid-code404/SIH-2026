@@ -1,6 +1,7 @@
 package org.nirikshanx.inspectiontemplate;
 
 import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -140,7 +141,7 @@ public class InspectionTemplateRepository {
                  WHERE id=:versionId AND status='DRAFT'
                 """)
                 .param("actorId", actorId)
-                .param("publishedAt", publishedAt)
+                .param("publishedAt", publishedAt.atOffset(ZoneOffset.UTC))
                 .param("versionId", versionId)
                 .update();
     }
