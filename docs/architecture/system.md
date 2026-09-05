@@ -1,6 +1,6 @@
 # System Architecture
 
-## Implemented architecture through Phase 3
+## Implemented architecture through Phase 6
 
 ```text
 Browser
@@ -10,11 +10,29 @@ NirikshanX responsive Next.js PWA :3000
   | same-origin /backend-api rewrite
   v
 Spring Boot modular monolith :8080
+  |---- Authentication module
+  |       |---- Argon2id credentials
+  |       |---- short-lived JWT access tokens
+  |       |---- rotating refresh sessions
+  |       `---- TOTP MFA / session assurance
+  |
+  |---- Authorization module
+  |       |---- roles + permissions
+  |       |---- NATIONAL / STATE / DISTRICT jurisdiction
+  |       `---- live PostgreSQL permission resolution per request
+  |
+  |---- Institution module
+  |       |---- canonical institution CRUD/search
+  |       |---- SQL-scoped resource visibility
+  |       `---- institution membership ownership scope
+  |
   |---- PostgreSQL 18 + PostGIS 3.6  [authoritative]
-  |       |---- Flyway migration history
+  |       |---- Flyway V1..V5
   |       |---- platform_bootstrap
-  |       |---- states
-  |       `---- districts
+  |       |---- states / districts
+  |       |---- users / sessions / TOTP
+  |       |---- roles / permissions / jurisdictions
+  |       `---- institutions / institution_memberships
   |
   |---- Redis 8.8                       [disposable/non-authoritative]
   |
@@ -25,9 +43,11 @@ The product remains a modular monolith. No business capability has been split in
 
 ## Web application boundary
 
-The frontend is one responsive PWA rather than separate officer/inspector/institution applications. Phase 2 established the shared semantic design tokens, responsive shell, accessible interaction primitives, data/workflow patterns and reserved domain UI boundaries.
+The frontend is one responsive PWA rather than separate officer/inspector/institution applications. Phase 2 established the shared semantic design system. Authentication and account-security surfaces were added in Phase 4, while Phase 6 adds the first real protected domain surface at `/institutions`.
 
-Those UI boundaries do not imply later business engines exist. Authentication, authorization, institutions, inspections, evidence, CCTV, attendance, anomaly detection and risk scoring remain absent until their own vertical phases.
+The institution registry uses server-side search/pagination, desktop tabular presentation and mobile cards. The institution detail route exposes only the implemented overview/membership functionality. Future Institution 360 tabs are not rendered as fake placeholders.
+
+Role-aware workspace routing is still a later phase; Phase 6 does not redesign the application into separate portals.
 
 ## Real system-status contract
 
@@ -43,72 +63,122 @@ Flyway owns schema evolution. Migrations are append-only after merge.
 
 ### V1 — infrastructure bootstrap
 
-`V1__enable_postgis_and_bootstrap.sql`:
-
-- enables PostGIS;
-- creates `platform_bootstrap` as infrastructure metadata.
+`V1__enable_postgis_and_bootstrap.sql` confirms/enables PostGIS and creates `platform_bootstrap`.
 
 ### V2 — database core
 
-`V2__database_core_geography.sql` establishes the first canonical relational business foundation:
+`V2__database_core_geography.sql` establishes canonical `states` and `districts`, UUIDs, UTC `timestamptz`, strong relational constraints and database-maintained audit timestamps.
+
+### V3 — authentication
+
+Phase 4 introduces canonical users, refresh-session state, failed-login audit and TOTP data. Access JWTs remain short-lived and deliberately compact; refresh tokens are hashed at rest and rotated server-side.
+
+### V4 — authorization
+
+Phase 5 introduces roles, permissions, user-role history and NATIONAL/STATE/DISTRICT user jurisdictions. Privileged permission resolution is gated by current-session MFA assurance and remains PostgreSQL-backed rather than JWT-embedded.
+
+### V5 — institutions
+
+Phase 6 introduces:
 
 ```text
-states 1 ─────────── * districts
+states 1 ───── * institutions * ───── 1 districts
+                         |
+                         *
+                         |
+              institution_memberships
+                         |
+                         *
+                       users
 ```
 
-Both tables use UUID primary keys, normalized canonical external codes/names, `timestamptz` audit timestamps and database constraints. State deletion is restricted while districts reference it.
+`institutions.state_id` / `district_id` are relational. A composite FK ensures a district belongs to the supplied state.
 
-A database trigger keeps `created_at` immutable and advances `updated_at` on updates.
-
-No guessed geography is seeded. An authoritative geography source/version policy must be selected before production catalog ingestion.
-
-Future business tables reference geography IDs instead of duplicating raw State/District strings.
-
-## PostGIS boundary
-
-PostGIS is available now, but Database Core does not create an empty institution schema merely to consume it.
-
-The later Institution phase will introduce the real institution location field as:
+Institution location is a real PostGIS:
 
 ```sql
 geography(Point,4326)
 ```
 
-with a spatial index for actual distance/geofence/nearby-candidate/map queries.
+with a GiST spatial index. The schema stores explicit primary-contact columns rather than a JSONB catch-all.
 
-## Database-core verification
+`institution_memberships` preserve assignment/revocation history. Active membership adds resource ownership scope only; it never grants a capability that the user's RBAC permissions do not already allow.
 
-CI starts the complete Compose stack, waits for real backend/web readiness, verifies PostGIS and executes `scripts/verify_database_core.sql` against PostgreSQL.
+## Authorization decision boundary
 
-The verifier uses transaction-scoped fixtures and checks positive and negative database invariants before rolling everything back. This gives database behavior a real integration gate without introducing fake production records.
+For institution resources, the current effective decision is:
 
-## PWA baseline
+```text
+allow = required permission
+     && (
+          matching NATIONAL/STATE/DISTRICT jurisdiction
+          OR active membership in that exact institution
+        )
+```
 
-The web app ships a manifest and production service-worker baseline. The service worker deliberately does not cache backend API responses. Full offline inspection repositories, mutation queues, evidence persistence and conflict resolution belong to later offline/sync phases.
+Membership is a resource-scope input, not a role or permission. Government users can see institutions inside their jurisdiction; institution users can see only institutions in which they have an active membership and for which their current role grants the operation.
 
-## Security boundary
+List/search authorization is pushed into SQL. The service does not fetch all institutions and filter them in memory. This prevents inaccessible rows and inaccessible total counts from being exposed to the caller.
 
-Authentication is intentionally absent through Database Core. No placeholder token mechanism exists and no JWT is stored in `localStorage`.
+Protected detail lookups use a non-disclosing visibility policy so guessed inaccessible institution IDs do not reveal whether a hidden record exists.
 
-The next Authentication phase will own users, credentials, short-lived access tokens, refresh-session rotation/revocation and login/session operations. Authorization follows as a separate phase so role/permission/jurisdiction logic is not mixed prematurely into authentication.
+## Authentication/security boundary
 
-## Dependency reproducibility
+Authentication and authorization remain separate concerns:
 
-All direct web dependencies are exact-version pinned and CI rejects semver ranges. The npm-generated `package-lock.json` captures the transitive graph. CI and the production web Docker build use `npm ci`; lifecycle scripts remain restricted through `.npmrc` and explicit `allowScripts` entries.
+- passwords are Argon2id-hashed;
+- access JWTs are short-lived and held in frontend runtime memory, not `localStorage`;
+- refresh tokens are cookie-backed, hashed server-side, rotating and replay/reuse aware;
+- current session/user validity is checked against PostgreSQL;
+- roles/permissions/jurisdiction are resolved from PostgreSQL per request;
+- privileged permission grants remain withheld unless MFA policy is satisfied.
 
-## Object-storage boundary
+Institution services repeat their own permission and resource-scope checks. Frontend visibility is convenience UX only and is never an enforcement boundary.
 
-MinIO is pinned and starts locally so the storage topology is established. Evidence buckets, server-generated object keys, upload authorization, independent hash verification and retention rules are not claimed yet.
+## Institution data-policy boundary
+
+The master specification identifies `institution_type`, `status`, `verification_status` and primary contact, but does not supply an authoritative government taxonomy for the three code fields.
+
+Phase 6 therefore stores normalized constrained policy codes without inventing a closed production enum. The UI asks for the approved code and explicitly avoids presenting a guessed taxonomy as authoritative.
+
+No fake production institution seed data is shipped.
+
+## Verification
+
+CI builds the complete Compose stack and verifies:
+
+- backend build/tests;
+- web lint/typecheck/tests/build;
+- Compose validity and health;
+- PostGIS;
+- database-core invariants;
+- authorization/MFA/jurisdiction policy;
+- institution V5 schema, PostGIS point storage and district/state consistency;
+- NATIONAL/STATE/DISTRICT institution isolation;
+- institution membership scope and immediate revocation;
+- non-disclosing SQL search/list behavior;
+- authentication/session security regressions;
+- responsive browser behavior and regression screenshots.
+
+The institution verifier uses isolated fixtures and removes them before completion. Test data is never treated as production seed data.
+
+## PWA/object-storage boundary
+
+The web app ships a manifest and production service-worker baseline. It deliberately does not cache backend API responses. Full offline inspection repositories, mutation queues, evidence persistence and conflict resolution belong to later offline/sync phases.
+
+MinIO remains pinned and available as local S3-compatible infrastructure. Evidence buckets, upload authorization, independent evidence hashing and retention are later evidence phases.
 
 ## Current phase boundary
 
-Database Core intentionally stops before:
+Phase 6 stops before:
 
-- users/sessions;
-- roles/permissions/jurisdictions;
-- institutions;
-- schemes/projects;
-- inspections/evidence;
-- AI/CCTV/attendance/risk.
+- schemes, institution-scheme enrollments, projects and milestones;
+- role-aware workspaces;
+- inspection templates/lifecycle;
+- inspector profiles/assignment;
+- proof-of-presence/evidence;
+- anomaly/risk engines;
+- CCTV/attendance;
+- corrective actions/reports/integrations.
 
-Those capabilities are added only when their data model, backend rules, API, authorization, UI, tests and verification can be implemented as a real vertical slice.
+Those capabilities are introduced only when their schema, backend rules, API, authorization, frontend, tests and verification can be implemented as a complete vertical slice.
