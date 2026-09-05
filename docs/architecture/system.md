@@ -1,6 +1,6 @@
 # System Architecture
 
-## Implemented architecture through Phase 6
+## Implemented architecture through active Phase 7
 
 ```text
 Browser
@@ -17,7 +17,7 @@ Spring Boot modular monolith :8080
   |       `---- TOTP MFA / session assurance
   |
   |---- Authorization module
-  |       |---- roles + permissions
+  |       |---- roles + granular permissions
   |       |---- NATIONAL / STATE / DISTRICT jurisdiction
   |       `---- live PostgreSQL permission resolution per request
   |
@@ -26,28 +26,32 @@ Spring Boot modular monolith :8080
   |       |---- SQL-scoped resource visibility
   |       `---- institution membership ownership scope
   |
+  |---- Program module
+  |       |---- scheme catalog
+  |       |---- institution scheme enrollments
+  |       |---- scoped projects
+  |       `---- ordered project milestones
+  |
   |---- PostgreSQL 18 + PostGIS 3.6  [authoritative]
-  |       |---- Flyway V1..V5
-  |       |---- platform_bootstrap
-  |       |---- states / districts
-  |       |---- users / sessions / TOTP
-  |       |---- roles / permissions / jurisdictions
-  |       `---- institutions / institution_memberships
+  |       |---- Flyway V1..V6
+  |       |---- geography / identity / authorization
+  |       |---- institutions / memberships
+  |       `---- schemes / enrollments / projects / milestones
   |
   |---- Redis 8.8                       [disposable/non-authoritative]
   |
   `---- S3-compatible MinIO             [local storage process; evidence integration later]
 ```
 
-The product remains a modular monolith. No business capability has been split into a microservice merely for architectural appearance.
+The product remains a modular monolith. No business capability is split into a microservice merely for architectural appearance.
 
 ## Web application boundary
 
-The frontend is one responsive PWA rather than separate officer/inspector/institution applications. Phase 2 established the shared semantic design system. Authentication and account-security surfaces were added in Phase 4, while Phase 6 adds the first real protected domain surface at `/institutions`.
+The frontend is one responsive PWA rather than separate officer/inspector/institution applications. Phase 2 established the shared semantic design system, Phase 4 added authentication/account security, Phase 6 introduced `/institutions`, and active Phase 7 adds `/programs` plus `/projects/{projectId}`.
 
-The institution registry uses server-side search/pagination, desktop tabular presentation and mobile cards. The institution detail route exposes only the implemented overview/membership functionality. Future Institution 360 tabs are not rendered as fake placeholders.
+The program registry uses server-side search/pagination, desktop tables and mobile cards. Institution details surface only real accessible scheme enrollments/projects. Project detail surfaces only the implemented overview, schedule and milestones. Future inspection/risk/CCTV/attendance/corrective-action sections are not rendered as fake placeholders.
 
-Role-aware workspace routing is still a later phase; Phase 6 does not redesign the application into separate portals.
+Role-aware workspace routing is the next roadmap phase; Phase 7 still uses one coherent application rather than separate portals.
 
 ## Real system-status contract
 
@@ -57,9 +61,7 @@ The web application calls that backend endpoint through the same-origin Next.js 
 
 ## Authoritative database boundary
 
-PostgreSQL + PostGIS is the system of record. Redis may accelerate later workflows but cannot become the only copy of business state.
-
-Flyway owns schema evolution. Migrations are append-only after merge.
+PostgreSQL + PostGIS is the system of record. Redis may accelerate later workflows but cannot become the only copy of business state. Flyway owns append-only schema evolution after merge.
 
 ### V1 — infrastructure bootstrap
 
@@ -71,15 +73,13 @@ Flyway owns schema evolution. Migrations are append-only after merge.
 
 ### V3 — authentication
 
-Phase 4 introduces canonical users, refresh-session state, failed-login audit and TOTP data. Access JWTs remain short-lived and deliberately compact; refresh tokens are hashed at rest and rotated server-side.
+Canonical users, refresh-session state, authentication events and TOTP data. Access JWTs remain short-lived and compact; refresh tokens are hashed at rest and rotated server-side.
 
 ### V4 — authorization
 
-Phase 5 introduces roles, permissions, user-role history and NATIONAL/STATE/DISTRICT user jurisdictions. Privileged permission resolution is gated by current-session MFA assurance and remains PostgreSQL-backed rather than JWT-embedded.
+Roles, permissions, user-role history and NATIONAL/STATE/DISTRICT jurisdictions. Privileged permission resolution is gated by current-session MFA assurance and remains PostgreSQL-backed rather than JWT-embedded.
 
 ### V5 — institutions
-
-Phase 6 introduces:
 
 ```text
 states 1 ───── * institutions * ───── 1 districts
@@ -92,21 +92,30 @@ states 1 ───── * institutions * ───── 1 districts
                        users
 ```
 
-`institutions.state_id` / `district_id` are relational. A composite FK ensures a district belongs to the supplied state.
+Institution location uses real `geography(Point,4326)` plus a GiST index. Composite relational constraints ensure the supplied district belongs to the supplied state. Active membership adds exact-institution resource scope only; it never grants a missing capability.
 
-Institution location is a real PostGIS:
+### V6 — schemes / projects
 
-```sql
-geography(Point,4326)
+```text
+schemes
+   |
+   *
+institution_scheme_enrollments * ---- 1 institutions
+   |
+   *
+projects
+   |
+   *
+project_milestones
 ```
 
-with a GiST spatial index. The schema stores explicit primary-contact columns rather than a JSONB catch-all.
+The project stores `enrollment_id` as its canonical parent. It does not duplicate unchecked `institution_id` and `scheme_id`, so a project cannot claim a scheme/institution pair inconsistent with its enrollment.
 
-`institution_memberships` preserve assignment/revocation history. Active membership adds resource ownership scope only; it never grants a capability that the user's RBAC permissions do not already allow.
+One institution cannot hold two active enrollments in the same scheme. Milestone sequence is positive and unique within a project. Status/type-like policy values remain normalized constrained codes rather than guessed closed government taxonomies.
 
 ## Authorization decision boundary
 
-For institution resources, the current effective decision is:
+For institution-bound resources, including Phase 7 enrollments/projects/milestones, the effective decision is:
 
 ```text
 allow = required permission
@@ -116,11 +125,11 @@ allow = required permission
         )
 ```
 
-Membership is a resource-scope input, not a role or permission. Government users can see institutions inside their jurisdiction; institution users can see only institutions in which they have an active membership and for which their current role grants the operation.
+Membership is a resource-scope input, not a role or permission. A user with membership but without `project.read`, for example, cannot read a project.
 
-List/search authorization is pushed into SQL. The service does not fetch all institutions and filter them in memory. This prevents inaccessible rows and inaccessible total counts from being exposed to the caller.
+Scheme catalog resources are global and permission-scoped. Enrollment/project/milestone visibility inherits the parent institution scope. SQL list/search queries apply the resource predicate before rows or counts are returned; hidden records are not fetched and filtered in browser memory.
 
-Protected detail lookups use a non-disclosing visibility policy so guessed inaccessible institution IDs do not reveal whether a hidden record exists.
+Protected detail lookups use non-disclosing behavior so a guessed inaccessible enrollment/project/milestone ID does not reveal hidden parent resource existence.
 
 ## Authentication/security boundary
 
@@ -133,15 +142,15 @@ Authentication and authorization remain separate concerns:
 - roles/permissions/jurisdiction are resolved from PostgreSQL per request;
 - privileged permission grants remain withheld unless MFA policy is satisfied.
 
-Institution services repeat their own permission and resource-scope checks. Frontend visibility is convenience UX only and is never an enforcement boundary.
+Institution and program services enforce their own permission/resource-scope rules. Frontend element visibility is convenience UX only and never an enforcement boundary.
 
-## Institution data-policy boundary
+## Policy-data boundary
 
-The master specification identifies `institution_type`, `status`, `verification_status` and primary contact, but does not supply an authoritative government taxonomy for the three code fields.
+The master specification requires scheme-agnostic entities but does not supply authoritative production catalogs for institution type/status, scheme status, enrollment status, project status or milestone status.
 
-Phase 6 therefore stores normalized constrained policy codes without inventing a closed production enum. The UI asks for the approved code and explicitly avoids presenting a guessed taxonomy as authoritative.
+NirikshanX therefore stores normalized constrained policy codes without presenting a guessed enum as government policy. Authoritative dictionaries/integrations can be introduced from approved sources later without embedding one scheme's columns into the shared model.
 
-No fake production institution seed data is shipped.
+No fake production institutions, schemes or projects are seeded.
 
 ## Verification
 
@@ -152,15 +161,18 @@ CI builds the complete Compose stack and verifies:
 - Compose validity and health;
 - PostGIS;
 - database-core invariants;
-- authorization/MFA/jurisdiction policy;
-- institution V5 schema, PostGIS point storage and district/state consistency;
-- NATIONAL/STATE/DISTRICT institution isolation;
-- institution membership scope and immediate revocation;
-- non-disclosing SQL search/list behavior;
+- additive authorization/MFA/jurisdiction policy;
+- institution V5 schema/PostGIS/scoped access;
+- Phase 7 V6 relational integrity;
+- scheme/enrollment/project/milestone capabilities;
+- NATIONAL/STATE/DISTRICT isolation for institution-bound program data;
+- exact membership scope without RBAC bypass;
+- immediate membership revocation;
+- non-disclosing SQL search/list/detail behavior;
 - authentication/session security regressions;
 - responsive browser behavior and regression screenshots.
 
-The institution verifier uses isolated fixtures and removes them before completion. Test data is never treated as production seed data.
+All integration verifiers use isolated fixtures and remove them before the next verification stage. Test data is not production seed data.
 
 ## PWA/object-storage boundary
 
@@ -170,15 +182,15 @@ MinIO remains pinned and available as local S3-compatible infrastructure. Eviden
 
 ## Current phase boundary
 
-Phase 6 stops before:
+Phase 7 stops before:
 
-- schemes, institution-scheme enrollments, projects and milestones;
 - role-aware workspaces;
 - inspection templates/lifecycle;
 - inspector profiles/assignment;
 - proof-of-presence/evidence;
 - anomaly/risk engines;
 - CCTV/attendance;
-- corrective actions/reports/integrations.
+- corrective actions/reports/integrations;
+- scheme-specific dynamic form policy unless explicitly introduced by a later source-backed requirement.
 
 Those capabilities are introduced only when their schema, backend rules, API, authorization, frontend, tests and verification can be implemented as a complete vertical slice.
