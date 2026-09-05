@@ -52,7 +52,7 @@ public class AuthService {
         }
     }
 
-    @Transactional
+    @Transactional(noRollbackFor = ApiException.class)
     public LoginResult login(String emailInput, String password, ClientContext client) {
         Instant now = Instant.now();
         String email = normalizeEmail(emailInput);
@@ -96,7 +96,7 @@ public class AuthService {
         return LoginResult.authenticated(createSession(user, client, now, true));
     }
 
-    @Transactional
+    @Transactional(noRollbackFor = ApiException.class)
     public SessionBundle verifyMfaLogin(String challengeToken, String code, ClientContext client) {
         Instant now = Instant.now();
         if (challengeToken == null || challengeToken.isBlank()) {
@@ -132,7 +132,7 @@ public class AuthService {
         return createSession(user, client, now, true);
     }
 
-    @Transactional
+    @Transactional(noRollbackFor = ApiException.class)
     public SessionBundle refresh(String rawRefreshToken, ClientContext client) {
         Instant now = Instant.now();
         if (rawRefreshToken == null || rawRefreshToken.isBlank()) {
@@ -199,7 +199,7 @@ public class AuthService {
                 .toList();
     }
 
-    @Transactional
+    @Transactional(noRollbackFor = ApiException.class)
     public void logout(AuthPrincipal principal, ClientContext client) {
         Instant now = Instant.now();
         if (repository.revokeSession(principal.sessionId(), principal.userId(), "USER_LOGOUT", now) > 0) {
@@ -209,7 +209,7 @@ public class AuthService {
         }
     }
 
-    @Transactional
+    @Transactional(noRollbackFor = ApiException.class)
     public void logoutAll(AuthPrincipal principal, ClientContext client) {
         Instant now = Instant.now();
         repository.revokeAllSessions(principal.userId(), "USER_LOGOUT_ALL", now);
@@ -217,7 +217,7 @@ public class AuthService {
                 audit(client).ipHash(), audit(client).userAgent(), now);
     }
 
-    @Transactional
+    @Transactional(noRollbackFor = ApiException.class)
     public boolean revokeSession(AuthPrincipal principal, UUID sessionId) {
         Instant now = Instant.now();
         int changed = repository.revokeSession(sessionId, principal.userId(), "USER_REVOKED_SESSION", now);
@@ -225,7 +225,7 @@ public class AuthService {
         return changed > 0;
     }
 
-    @Transactional
+    @Transactional(noRollbackFor = ApiException.class)
     public void changePassword(AuthPrincipal principal, String currentPassword, String newPassword, ClientContext client) {
         Instant now = Instant.now();
         AuthRepository.UserRow user = repository.findUserById(principal.userId())
@@ -245,7 +245,7 @@ public class AuthService {
                 audit(client).ipHash(), audit(client).userAgent(), now);
     }
 
-    @Transactional
+    @Transactional(noRollbackFor = ApiException.class)
     public TotpEnrollment enrollTotp(AuthPrincipal principal) {
         Instant now = Instant.now();
         AuthRepository.UserRow user = repository.findUserById(principal.userId())
@@ -263,7 +263,7 @@ public class AuthService {
         return new TotpEnrollment(material.base32Secret(), material.otpauthUri(), expiresAt);
     }
 
-    @Transactional
+    @Transactional(noRollbackFor = ApiException.class)
     public void confirmTotp(AuthPrincipal principal, String code) {
         Instant now = Instant.now();
         AuthRepository.TotpRow totp = repository.findTotpForUpdate(principal.userId())
@@ -274,10 +274,12 @@ public class AuthService {
         if (totp.enrollmentExpiresAt() == null || !totp.enrollmentExpiresAt().isAfter(now)) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "MFA_ENROLLMENT_EXPIRED", "TOTP enrollment has expired. Start again.");
         }
-        if (totpService.verifyForEnrollment(totp.encryptedSecret(), code).isEmpty()) {
+        OptionalLong counter = totpService.verifyForEnrollment(totp.encryptedSecret(), code);
+        if (counter.isEmpty()) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "INVALID_MFA_CODE", "The verification code is invalid.");
         }
         repository.confirmTotp(principal.userId(), now);
+        repository.updateTotpCounter(principal.userId(), counter.getAsLong());
     }
 
     private SessionBundle createSession(AuthRepository.UserRow user, ClientContext client, Instant now, boolean recordLogin) {
