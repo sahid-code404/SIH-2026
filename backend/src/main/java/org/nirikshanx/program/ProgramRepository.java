@@ -37,7 +37,7 @@ public class ProgramRepository {
                 SELECT s.id, s.code, s.name, s.short_name, s.description, s.status,
                        s.effective_from, s.effective_to, s.created_at, s.updated_at
                   FROM schemes s
-                 WHERE """ + where + " ORDER BY " + sort + " " + direction
+                """ + " WHERE " + where + " ORDER BY " + sort + " " + direction
                 + ", s.id ASC LIMIT :limit OFFSET :offset";
         JdbcClient.StatementSpec data = bindSchemeSearch(jdbc.sql(sql), criteria)
                 .param("limit", criteria.limit())
