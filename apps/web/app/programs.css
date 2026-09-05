@@ -1,0 +1,524 @@
+.nx-programs-page {
+  min-height: 100dvh;
+  padding: clamp(1rem, 3vw, 2rem);
+  color: var(--nx-text-primary);
+  background:
+    radial-gradient(circle at 86% 3%, color-mix(in srgb, var(--nx-primary) 7%, transparent), transparent 32rem),
+    var(--nx-background);
+}
+
+.nx-program-width {
+  width: min(100%, 82rem);
+  margin-inline: auto;
+}
+
+.nx-program-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.nx-program-header nav {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.nx-program-header nav a,
+.nx-programs-page .nx-back-link,
+.nx-programs-page .nx-row-link {
+  color: var(--nx-primary);
+  font-weight: 650;
+  text-decoration: none;
+}
+
+.nx-program-header nav a:hover,
+.nx-programs-page .nx-back-link:hover,
+.nx-programs-page .nx-row-link:hover {
+  text-decoration: underline;
+  text-underline-offset: .2em;
+}
+
+.nx-program-hero,
+.nx-program-detail-hero {
+  margin-top: clamp(2.5rem, 6vw, 5.5rem);
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 2rem;
+}
+
+.nx-program-hero h1,
+.nx-program-detail-hero h1 {
+  margin: .35rem 0 .55rem;
+  max-width: 54rem;
+  font-size: clamp(2.15rem, 4.5vw, 4rem);
+  line-height: .98;
+  letter-spacing: -.05em;
+}
+
+.nx-program-hero p,
+.nx-program-detail-hero p,
+.nx-program-section-heading p,
+.nx-program-empty p,
+.nx-program-card p,
+.nx-program-empty-inline p {
+  margin: 0;
+  color: var(--nx-text-secondary);
+  line-height: 1.55;
+}
+
+.nx-program-hero p {
+  max-width: 52rem;
+  font-size: .98rem;
+}
+
+.nx-program-state,
+.nx-program-tabs,
+.nx-program-registry,
+.nx-program-editor,
+.nx-program-detail-grid,
+.nx-program-milestones {
+  margin-top: 1rem;
+}
+
+.nx-program-tabs {
+  display: flex;
+  gap: .45rem;
+  padding: .38rem;
+  width: fit-content;
+  max-width: 100%;
+  border: 1px solid var(--nx-border);
+  border-radius: var(--nx-radius-lg);
+  background: color-mix(in srgb, var(--nx-surface) 92%, transparent);
+  box-shadow: var(--nx-shadow-sm);
+}
+
+.nx-program-tabs .nx-button {
+  min-width: 7.5rem;
+}
+
+.nx-program-editor,
+.nx-program-milestones {
+  padding: clamp(1rem, 3vw, 1.65rem);
+}
+
+.nx-program-section-heading {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.nx-program-section-heading h2 {
+  margin: 0 0 .35rem;
+  font-size: clamp(1.05rem, 2vw, 1.32rem);
+  letter-spacing: -.025em;
+}
+
+.nx-program-section-heading p {
+  max-width: 48rem;
+  font-size: .9rem;
+}
+
+.nx-program-registry {
+  padding-bottom: 4rem;
+}
+
+.nx-program-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.nx-program-toolbar > span {
+  color: var(--nx-text-muted);
+  font-size: .9rem;
+  white-space: nowrap;
+}
+
+.nx-program-search {
+  display: flex;
+  align-items: center;
+  gap: .55rem;
+  flex: 1;
+  max-width: 42rem;
+}
+
+.nx-program-search .nx-control {
+  min-width: 0;
+  flex: 1;
+}
+
+.nx-program-table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--nx-border);
+  border-radius: var(--nx-radius-xl);
+  background: var(--nx-surface);
+  box-shadow: var(--nx-shadow-sm);
+}
+
+.nx-program-table {
+  width: 100%;
+  min-width: 56rem;
+  border-collapse: collapse;
+}
+
+.nx-program-table th,
+.nx-program-table td {
+  padding: .9rem 1rem;
+  text-align: left;
+  vertical-align: middle;
+  border-bottom: 1px solid var(--nx-border);
+}
+
+.nx-program-table th {
+  color: var(--nx-text-muted);
+  font-size: .77rem;
+  font-weight: 750;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  background: var(--nx-surface-muted);
+}
+
+.nx-program-table tr:last-child td {
+  border-bottom: 0;
+}
+
+.nx-program-table td strong,
+.nx-program-table td span {
+  display: block;
+}
+
+.nx-program-table td strong + span {
+  margin-top: .22rem;
+  color: var(--nx-text-muted);
+  font-size: .82rem;
+}
+
+.nx-link-button {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  cursor: pointer;
+}
+
+.nx-program-card-list {
+  display: none;
+}
+
+.nx-program-card {
+  display: grid;
+  gap: .9rem;
+  padding: 1rem;
+}
+
+.nx-program-card-heading {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: .75rem;
+}
+
+.nx-program-card-heading strong,
+.nx-program-card-heading span {
+  display: block;
+}
+
+.nx-program-card-heading span {
+  margin-top: .2rem;
+  color: var(--nx-text-muted);
+  font-size: .82rem;
+}
+
+.nx-program-card dl {
+  display: grid;
+  gap: .55rem;
+  margin: 0;
+}
+
+.nx-program-card dl > div {
+  display: grid;
+  grid-template-columns: 6.5rem minmax(0, 1fr);
+  gap: .65rem;
+}
+
+.nx-program-card dt,
+.nx-program-detail-list dt {
+  color: var(--nx-text-muted);
+}
+
+.nx-program-card dd,
+.nx-program-detail-list dd {
+  margin: 0;
+}
+
+.nx-program-card-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.nx-program-empty {
+  padding: clamp(1.25rem, 3vw, 2rem);
+  text-align: center;
+}
+
+.nx-program-empty h3 {
+  margin: 0 0 .4rem;
+  font-size: 1.05rem;
+}
+
+.nx-program-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: .75rem;
+  margin-top: 1rem;
+}
+
+.nx-program-pagination span {
+  color: var(--nx-text-muted);
+  font-size: .88rem;
+}
+
+.nx-program-parent-summary {
+  display: grid;
+  gap: .2rem;
+  padding: .8rem .9rem;
+  border: 1px solid var(--nx-border);
+  border-radius: var(--nx-radius-md);
+  background: var(--nx-surface-muted);
+}
+
+.nx-program-parent-summary strong {
+  font-size: .92rem;
+}
+
+.nx-program-parent-summary span {
+  color: var(--nx-text-secondary);
+  font-size: .82rem;
+}
+
+.nx-program-detail-actions {
+  display: flex;
+  align-items: center;
+  gap: .55rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.nx-program-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.nx-program-detail-card {
+  min-width: 0;
+  padding: clamp(1rem, 2.5vw, 1.5rem);
+}
+
+.nx-program-detail-list {
+  display: grid;
+  gap: 0;
+  margin: 0;
+}
+
+.nx-program-detail-list > div {
+  display: grid;
+  grid-template-columns: minmax(8rem, .7fr) minmax(0, 1.3fr);
+  gap: 1rem;
+  padding-block: .78rem;
+  border-bottom: 1px solid var(--nx-border);
+}
+
+.nx-program-detail-list > div:last-child {
+  border-bottom: 0;
+}
+
+.nx-program-milestones {
+  margin-bottom: 4rem;
+}
+
+.nx-program-inline-editor {
+  margin-bottom: 1rem;
+  padding: 1rem;
+  border: 1px solid var(--nx-border);
+  border-radius: var(--nx-radius-lg);
+  background: var(--nx-surface-muted);
+}
+
+.nx-program-empty-inline {
+  display: grid;
+  gap: .3rem;
+  padding: 1.25rem 0 .5rem;
+  text-align: center;
+}
+
+.nx-milestone-list {
+  display: grid;
+  gap: .7rem;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.nx-milestone-list li {
+  display: grid;
+  grid-template-columns: 2.65rem minmax(0, 1fr) auto;
+  align-items: start;
+  gap: .9rem;
+  padding: 1rem;
+  border: 1px solid var(--nx-border);
+  border-radius: var(--nx-radius-lg);
+  background: var(--nx-surface-muted);
+}
+
+.nx-milestone-sequence {
+  width: 2.4rem;
+  height: 2.4rem;
+  display: grid;
+  place-items: center;
+  border-radius: .8rem;
+  background: var(--nx-primary-soft);
+  color: var(--nx-primary);
+  font-size: .85rem;
+  font-weight: 800;
+}
+
+.nx-milestone-copy {
+  min-width: 0;
+  display: grid;
+  gap: .38rem;
+}
+
+.nx-milestone-copy strong,
+.nx-milestone-copy span {
+  display: block;
+}
+
+.nx-milestone-copy span,
+.nx-milestone-copy small {
+  color: var(--nx-text-muted);
+  font-size: .8rem;
+}
+
+.nx-milestone-copy p {
+  margin: 0;
+  color: var(--nx-text-secondary);
+  font-size: .88rem;
+  line-height: 1.5;
+}
+
+.nx-milestone-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: .4rem;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 780px) {
+  .nx-program-header,
+  .nx-program-hero,
+  .nx-program-detail-hero,
+  .nx-program-toolbar,
+  .nx-program-section-heading,
+  .nx-program-card-heading {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .nx-program-header nav,
+  .nx-program-detail-actions {
+    justify-content: flex-start;
+  }
+
+  .nx-program-tabs {
+    width: 100%;
+    overflow-x: auto;
+  }
+
+  .nx-program-tabs .nx-button {
+    flex: 1 0 auto;
+    min-width: 7rem;
+  }
+
+  .nx-program-section-heading > div:last-child > .nx-button,
+  .nx-program-detail-actions .nx-button {
+    width: 100%;
+  }
+
+  .nx-program-table-wrap {
+    display: none;
+  }
+
+  .nx-program-card-list {
+    display: grid;
+    gap: .75rem;
+  }
+
+  .nx-program-search {
+    max-width: none;
+  }
+
+  .nx-program-pagination {
+    justify-content: space-between;
+  }
+
+  .nx-program-detail-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .nx-program-detail-list > div {
+    grid-template-columns: 1fr;
+    gap: .25rem;
+  }
+
+  .nx-milestone-list li {
+    grid-template-columns: 2.65rem minmax(0, 1fr);
+  }
+
+  .nx-milestone-actions {
+    grid-column: 2;
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 520px) {
+  .nx-program-header nav,
+  .nx-program-search,
+  .nx-program-card-actions {
+    width: 100%;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .nx-program-header nav a {
+    padding-block: .2rem;
+  }
+
+  .nx-program-search .nx-button,
+  .nx-program-card-actions .nx-button {
+    width: 100%;
+  }
+
+  .nx-program-card dl > div {
+    grid-template-columns: 1fr;
+    gap: .2rem;
+  }
+
+  .nx-program-pagination {
+    gap: .35rem;
+  }
+
+  .nx-program-pagination span {
+    text-align: center;
+    font-size: .78rem;
+  }
+}

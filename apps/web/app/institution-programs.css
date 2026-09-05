@@ -1,0 +1,119 @@
+.nx-institution-programs {
+  margin-top: 1rem;
+  margin-bottom: 4rem;
+  padding: clamp(1rem, 2.5vw, 1.5rem);
+}
+
+.nx-institution-programs .nx-institution-section-heading {
+  align-items: flex-start;
+}
+
+.nx-institution-programs .nx-row-link {
+  color: var(--nx-primary);
+  font-weight: 650;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.nx-institution-programs .nx-row-link:hover {
+  text-decoration: underline;
+  text-underline-offset: .2em;
+}
+
+.nx-institution-program-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.nx-institution-program-grid > div {
+  min-width: 0;
+  padding: 1rem;
+  border: 1px solid var(--nx-border);
+  border-radius: var(--nx-radius-lg);
+  background: var(--nx-surface-muted);
+}
+
+.nx-institution-program-subhead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: .75rem;
+}
+
+.nx-institution-program-subhead > span {
+  display: inline-grid;
+  place-items: center;
+  min-width: 1.8rem;
+  height: 1.8rem;
+  padding-inline: .4rem;
+  border-radius: 999px;
+  background: var(--nx-primary-soft);
+  color: var(--nx-primary);
+  font-size: .78rem;
+  font-weight: 800;
+}
+
+.nx-institution-program-list {
+  display: grid;
+  gap: .55rem;
+}
+
+.nx-institution-program-list article {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .75rem;
+  padding: .78rem;
+  border: 1px solid var(--nx-border);
+  border-radius: var(--nx-radius-md);
+  background: var(--nx-surface);
+}
+
+.nx-institution-program-list article > div {
+  min-width: 0;
+}
+
+.nx-institution-program-list strong,
+.nx-institution-program-list span,
+.nx-institution-program-list a {
+  display: block;
+}
+
+.nx-institution-program-list a {
+  color: var(--nx-text-primary);
+  font-weight: 720;
+  text-decoration: none;
+}
+
+.nx-institution-program-list a:hover {
+  color: var(--nx-primary);
+  text-decoration: underline;
+  text-underline-offset: .2em;
+}
+
+.nx-institution-program-list span {
+  margin-top: .18rem;
+  color: var(--nx-text-muted);
+  font-size: .8rem;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 780px) {
+  .nx-institution-programs .nx-institution-section-heading {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .nx-institution-program-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 520px) {
+  .nx-institution-program-list article {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
