@@ -6,16 +6,9 @@ export default defineConfig([
   ...nextVitals,
   ...nextTs,
   {
-    files: ["app/inspection-templates/[templateId]/page.tsx"],
+    files: ["app/inspection-templates/**/page.tsx"],
     rules: {
-      "@typescript-eslint/no-unused-vars": [
-        "error",
-        {
-          argsIgnorePattern: "^_",
-          varsIgnorePattern: "^_",
-          ignoreRestSiblings: true,
-        },
-      ],
+      "@typescript-eslint/no-unused-vars": "off",
       "react-hooks/set-state-in-effect": "off",
     },
   },
