@@ -50,6 +50,16 @@ function NavIcon({ name }: { name: NavigationItem["icon"] }) {
     );
   }
 
+  if (name === "templates") {
+    return (
+      <svg {...common}>
+        <path d="M7 4h10a2 2 0 0 1 2 2v14H7a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z" />
+        <path d="M8.5 8h7M8.5 12h7M8.5 16h4" />
+        <path d="M5 18a2 2 0 0 1 2-2" />
+      </svg>
+    );
+  }
+
   return (
     <svg {...common}>
       <circle cx="12" cy="8" r="3.2" />
