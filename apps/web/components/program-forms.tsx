@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useState } from "react";
 import { Button, Field, Input, Select, Textarea } from "@/components/ui/primitives";
 
 export type Scheme = {
@@ -132,23 +132,13 @@ export function SchemeForm({
   onSubmit: (payload: SchemePayload) => Promise<void> | void;
   onCancel: () => void;
 }) {
-  const [code, setCode] = useState("");
-  const [name, setName] = useState("");
-  const [shortName, setShortName] = useState("");
-  const [description, setDescription] = useState("");
-  const [status, setStatus] = useState("");
-  const [effectiveFrom, setEffectiveFrom] = useState("");
-  const [effectiveTo, setEffectiveTo] = useState("");
-
-  useEffect(() => {
-    setCode(value?.code ?? "");
-    setName(value?.name ?? "");
-    setShortName(value?.shortName ?? "");
-    setDescription(value?.description ?? "");
-    setStatus(value?.status ?? "");
-    setEffectiveFrom(value?.effectiveFrom ?? "");
-    setEffectiveTo(value?.effectiveTo ?? "");
-  }, [value]);
+  const [code, setCode] = useState(value?.code ?? "");
+  const [name, setName] = useState(value?.name ?? "");
+  const [shortName, setShortName] = useState(value?.shortName ?? "");
+  const [description, setDescription] = useState(value?.description ?? "");
+  const [status, setStatus] = useState(value?.status ?? "");
+  const [effectiveFrom, setEffectiveFrom] = useState(value?.effectiveFrom ?? "");
+  const [effectiveTo, setEffectiveTo] = useState(value?.effectiveTo ?? "");
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -211,21 +201,12 @@ export function EnrollmentForm({
   onSubmit: (payload: EnrollmentCreatePayload | EnrollmentUpdatePayload) => Promise<void> | void;
   onCancel: () => void;
 }) {
-  const [institutionId, setInstitutionId] = useState("");
-  const [schemeId, setSchemeId] = useState("");
-  const [enrollmentCode, setEnrollmentCode] = useState("");
-  const [status, setStatus] = useState("");
-  const [enrolledOn, setEnrolledOn] = useState("");
-  const [endedOn, setEndedOn] = useState("");
-
-  useEffect(() => {
-    setInstitutionId(value?.institutionId ?? institutions[0]?.id ?? "");
-    setSchemeId(value?.schemeId ?? schemes[0]?.id ?? "");
-    setEnrollmentCode(value?.enrollmentCode ?? "");
-    setStatus(value?.status ?? "");
-    setEnrolledOn(value?.enrolledOn ?? "");
-    setEndedOn(value?.endedOn ?? "");
-  }, [institutions, schemes, value]);
+  const [institutionId, setInstitutionId] = useState(value?.institutionId ?? institutions[0]?.id ?? "");
+  const [schemeId, setSchemeId] = useState(value?.schemeId ?? schemes[0]?.id ?? "");
+  const [enrollmentCode, setEnrollmentCode] = useState(value?.enrollmentCode ?? "");
+  const [status, setStatus] = useState(value?.status ?? "");
+  const [enrolledOn, setEnrolledOn] = useState(value?.enrolledOn ?? "");
+  const [endedOn, setEndedOn] = useState(value?.endedOn ?? "");
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -296,27 +277,15 @@ export function ProjectForm({
   onSubmit: (payload: ProjectCreatePayload | ProjectUpdatePayload) => Promise<void> | void;
   onCancel: () => void;
 }) {
-  const [enrollmentId, setEnrollmentId] = useState("");
-  const [code, setCode] = useState("");
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [status, setStatus] = useState("");
-  const [plannedStartOn, setPlannedStartOn] = useState("");
-  const [plannedEndOn, setPlannedEndOn] = useState("");
-  const [actualStartOn, setActualStartOn] = useState("");
-  const [actualEndOn, setActualEndOn] = useState("");
-
-  useEffect(() => {
-    setEnrollmentId(value?.enrollmentId ?? enrollments[0]?.id ?? "");
-    setCode(value?.code ?? "");
-    setTitle(value?.title ?? "");
-    setDescription(value?.description ?? "");
-    setStatus(value?.status ?? "");
-    setPlannedStartOn(value?.plannedStartOn ?? "");
-    setPlannedEndOn(value?.plannedEndOn ?? "");
-    setActualStartOn(value?.actualStartOn ?? "");
-    setActualEndOn(value?.actualEndOn ?? "");
-  }, [enrollments, value]);
+  const [enrollmentId, setEnrollmentId] = useState(value?.enrollmentId ?? enrollments[0]?.id ?? "");
+  const [code, setCode] = useState(value?.code ?? "");
+  const [title, setTitle] = useState(value?.title ?? "");
+  const [description, setDescription] = useState(value?.description ?? "");
+  const [status, setStatus] = useState(value?.status ?? "");
+  const [plannedStartOn, setPlannedStartOn] = useState(value?.plannedStartOn ?? "");
+  const [plannedEndOn, setPlannedEndOn] = useState(value?.plannedEndOn ?? "");
+  const [actualStartOn, setActualStartOn] = useState(value?.actualStartOn ?? "");
+  const [actualEndOn, setActualEndOn] = useState(value?.actualEndOn ?? "");
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -395,23 +364,13 @@ export function MilestoneForm({
   onSubmit: (payload: MilestonePayload) => Promise<void> | void;
   onCancel: () => void;
 }) {
-  const [sequenceNo, setSequenceNo] = useState("1");
-  const [code, setCode] = useState("");
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [status, setStatus] = useState("");
-  const [dueOn, setDueOn] = useState("");
-  const [completedAt, setCompletedAt] = useState("");
-
-  useEffect(() => {
-    setSequenceNo(String(value?.sequenceNo ?? 1));
-    setCode(value?.code ?? "");
-    setTitle(value?.title ?? "");
-    setDescription(value?.description ?? "");
-    setStatus(value?.status ?? "");
-    setDueOn(value?.dueOn ?? "");
-    setCompletedAt(value?.completedAt ? value.completedAt.slice(0, 16) : "");
-  }, [value]);
+  const [sequenceNo, setSequenceNo] = useState(String(value?.sequenceNo ?? 1));
+  const [code, setCode] = useState(value?.code ?? "");
+  const [title, setTitle] = useState(value?.title ?? "");
+  const [description, setDescription] = useState(value?.description ?? "");
+  const [status, setStatus] = useState(value?.status ?? "");
+  const [dueOn, setDueOn] = useState(value?.dueOn ?? "");
+  const [completedAt, setCompletedAt] = useState(value?.completedAt ? value.completedAt.slice(0, 16) : "");
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
