@@ -1,223 +1,215 @@
 "use client";
 
-import { useEffect, useState, type CSSProperties } from "react";
-import { AppShell } from "@/components/app-shell";
-import { DesignSystemShowcase } from "@/components/design-system-showcase";
-import {
-  Button,
-  Card,
-  Checkbox,
-  Field,
-  InlineNotice,
-  Input,
-  SectionHeading,
-  Select,
-  StatusBadge,
-  Switch,
-  Textarea,
-} from "@/components/ui/primitives";
+import Link from "next/link";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useAuth } from "@/components/auth-provider";
+import { useWorkspace } from "@/components/workspace-provider";
+import { Card, InlineNotice, StatusBadge } from "@/components/ui/primitives";
 
-type ComponentState = {
-  status: "UP" | "DOWN";
+type PageTotal = { total: number };
+
+type Summary = {
+  key: string;
+  label: string;
+  value: string;
+  detail: string;
 };
 
-type SystemStatus = {
-  service: string;
-  status: "UP" | "DEGRADED";
-  components: {
-    database: ComponentState;
-    redis: ComponentState;
-  };
-};
-
-function statusTone(value: string) {
-  if (value === "UP") return "success" as const;
-  if (value === "CHECKING") return "neutral" as const;
-  if (value === "DEGRADED") return "warning" as const;
-  return "danger" as const;
+async function responseMessage(response: Response) {
+  try {
+    const body = (await response.json()) as { title?: string };
+    return body.title || `Request failed with status ${response.status}`;
+  } catch {
+    return `Request failed with status ${response.status}`;
+  }
 }
 
-export default function Home() {
-  const [status, setStatus] = useState<SystemStatus | null>(null);
+export default function WorkspaceHome() {
+  const { user, request } = useAuth();
+  const { authorization, workspace, jurisdictionLabel, privilegeRestricted } = useWorkspace();
+  const [totals, setTotals] = useState<Record<string, number>>({});
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const permissions = useMemo(() => new Set(authorization?.effectivePermissions ?? []), [authorization]);
+
+  const loadTotals = useCallback(async () => {
+    if (!authorization) return;
+    const targets: Array<[string, string]> = [];
+    if (permissions.has("institution.read")) targets.push(["institutions", "/api/v1/institutions?page=0&size=1"]);
+    if (permissions.has("scheme.read")) targets.push(["schemes", "/api/v1/schemes?page=0&size=1&sort=name&direction=asc"]);
+    if (permissions.has("project.read")) targets.push(["projects", "/api/v1/projects?page=0&size=1&sort=title&direction=asc"]);
+
+    if (targets.length === 0) {
+      setTotals({});
+      setError(null);
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const entries = await Promise.all(
+        targets.map(async ([key, path]) => {
+          const response = await request(path, { cache: "no-store" });
+          if (!response.ok) throw new Error(await responseMessage(response));
+          const body = (await response.json()) as PageTotal;
+          return [key, body.total] as const;
+        }),
+      );
+      setTotals(Object.fromEntries(entries));
+      setError(null);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "Unable to load workspace summaries");
+    } finally {
+      setLoading(false);
+    }
+  }, [authorization, permissions, request]);
+
   useEffect(() => {
-    const controller = new AbortController();
+    const timer = window.setTimeout(() => void loadTotals(), 0);
+    return () => window.clearTimeout(timer);
+  }, [loadTotals]);
 
-    fetch("/backend-api/api/v1/system/status", {
-      cache: "no-store",
-      signal: controller.signal,
-    })
-      .then(async (response) => {
-        if (!response.ok) throw new Error(`Backend returned ${response.status}`);
-        return (await response.json()) as SystemStatus;
-      })
-      .then((nextStatus) => {
-        setStatus(nextStatus);
-        setError(null);
-      })
-      .catch((reason: unknown) => {
-        if (reason instanceof DOMException && reason.name === "AbortError") return;
-        setError(reason instanceof Error ? reason.message : "Backend unavailable");
-      });
+  if (!authorization || !workspace || !user) return null;
 
-    return () => controller.abort();
-  }, []);
+  const operationalSummaries: Summary[] = [];
+  if (permissions.has("institution.read")) {
+    operationalSummaries.push({
+      key: "institutions",
+      label: "Authorized institutions",
+      value: loading && totals.institutions === undefined ? "…" : String(totals.institutions ?? 0),
+      detail: "Server-scoped records visible to your live jurisdiction or membership.",
+    });
+  }
+  if (permissions.has("scheme.read")) {
+    operationalSummaries.push({
+      key: "schemes",
+      label: "Scheme catalog",
+      value: loading && totals.schemes === undefined ? "…" : String(totals.schemes ?? 0),
+      detail: "Persisted scheme-agnostic catalogue records.",
+    });
+  }
+  if (permissions.has("project.read")) {
+    operationalSummaries.push({
+      key: "projects",
+      label: "Authorized projects",
+      value: loading && totals.projects === undefined ? "…" : String(totals.projects ?? 0),
+      detail: "Projects inherited from institutions currently visible to you.",
+    });
+  }
 
-  const backend = status?.status ?? (error ? "DOWN" : "CHECKING");
-  const database = status?.components.database.status ?? (error ? "DOWN" : "CHECKING");
-  const redis = status?.components.redis.status ?? (error ? "DOWN" : "CHECKING");
+  const summaries = operationalSummaries.length > 0
+    ? operationalSummaries.slice(0, 3)
+    : [
+        {
+          key: "permissions",
+          label: "Effective permissions",
+          value: String(authorization.effectivePermissions.length),
+          detail: "Capabilities currently released by server-side authorization policy.",
+        },
+        {
+          key: "roles",
+          label: "Active roles",
+          value: String(authorization.roles.length),
+          detail: "Current role assignments used to choose this presentation workspace.",
+        },
+        {
+          key: "jurisdictions",
+          label: "Jurisdiction assignments",
+          value: String(authorization.jurisdictions.length),
+          detail: "Government geography scopes currently active for this account.",
+        },
+      ];
+
+  const canOpenPrograms =
+    permissions.has("scheme.read") ||
+    permissions.has("enrollment.read") ||
+    permissions.has("project.read") ||
+    permissions.has("milestone.read");
+
+  const inspectionWorkspace = workspace.kind === "INSPECTOR" || workspace.kind === "SUPERVISOR";
+  const auditWorkspace = workspace.kind === "AUDIT";
 
   return (
-    <AppShell>
-      <header className="nx-page-heading">
-        <span className="nx-page-meta">SIH26095 · Phase 2</span>
-        <h1>A calm, authoritative interface system for trusted verification work.</h1>
-        <p>
-          This phase establishes reusable visual, responsive and accessibility primitives. Operational cards below use only the
-          live foundation health contract; the remaining controls are explicitly design-system examples rather than simulated
-          inspections, AI findings or risk results.
-        </p>
-      </header>
-
-      <section className="nx-section" id="system" aria-labelledby="system-heading">
-        <SectionHeading
-          id="system-heading"
-          title="Live foundation status"
-          description="Real connectivity reported by the implemented backend. No mock operational intelligence is rendered."
-        />
-        <div className="nx-status-grid" aria-live="polite" aria-busy={!status && !error}>
-          <SystemStatusCard label="Backend" value={backend} detail={status?.service ?? "nirikshanx-backend"} />
-          <SystemStatusCard label="PostgreSQL + PostGIS" value={database} detail="Authoritative data store" />
-          <SystemStatusCard label="Redis" value={redis} detail="Disposable infrastructure" />
+    <main className="nx-workspace-home" id="main-content" tabIndex={-1}>
+      <section className="nx-workspace-home-hero">
+        <div>
+          <span className="nx-page-meta">{workspace.primaryRoleName || "Authorized workspace"}</span>
+          <h1>{workspace.title}</h1>
+          <p>{workspace.description}</p>
         </div>
+        <div className="nx-workspace-context" aria-label="Current workspace context">
+          <span>Current scope</span>
+          <strong>{jurisdictionLabel}</strong>
+          <small>{authorization.roles.length} role{authorization.roles.length === 1 ? "" : "s"} · {authorization.effectivePermissions.length} effective permissions</small>
+          <StatusBadge tone={authorization.mfaRequired && !authorization.mfaSatisfied ? "warning" : "success"}>
+            {authorization.mfaRequired && !authorization.mfaSatisfied ? "MFA gate active" : "Session policy satisfied"}
+          </StatusBadge>
+        </div>
+      </section>
 
-        {error ? (
-          <div style={{ marginTop: 12 }}>
-            <InlineNotice tone="danger" title="Health check unavailable">
-              {error}
-            </InlineNotice>
+      {privilegeRestricted ? (
+        <div className="nx-workspace-restricted">
+          <InlineNotice tone="warning" title="Privileged capabilities are currently withheld">
+            This account has an MFA-protected role, but this session has not satisfied that policy. Set up an authenticator if needed, then sign out and complete a fresh MFA sign-in. The workspace never treats withheld permissions as usable.
+          </InlineNotice>
+        </div>
+      ) : null}
+
+      {error ? (
+        <div className="nx-workspace-restricted">
+          <InlineNotice tone="danger" title="Workspace summary unavailable">{error}</InlineNotice>
+        </div>
+      ) : null}
+
+      <section className="nx-workspace-summary-grid" aria-label="Live workspace summary" aria-busy={loading}>
+        {summaries.map((summary) => (
+          <Card className="nx-workspace-summary-card" as="article" key={summary.key}>
+            <span>{summary.label}</span>
+            <strong>{summary.value}</strong>
+            <small>{summary.detail}</small>
+          </Card>
+        ))}
+      </section>
+
+      <section className="nx-workspace-sections">
+        <Card className="nx-workspace-panel" as="section">
+          <h2>Available work</h2>
+          <p>Links appear only for implemented routes backed by permissions effective in this session. Backend APIs remain the security boundary.</p>
+          <div className="nx-workspace-action-list">
+            {permissions.has("institution.read") ? (
+              <Link href="/institutions">
+                <div><strong>Institution registry</strong><small>Search and open institutions inside your authorized scope.</small></div>
+                <span aria-hidden="true">→</span>
+              </Link>
+            ) : null}
+            {canOpenPrograms ? (
+              <Link href="/programs">
+                <div><strong>Programs & projects</strong><small>Work with readable schemes, enrollments, projects and milestones.</small></div>
+                <span aria-hidden="true">→</span>
+              </Link>
+            ) : null}
+            <Link href="/account">
+              <div><strong>Account & security</strong><small>Review sessions, MFA and your current authorization context.</small></div>
+              <span aria-hidden="true">→</span>
+            </Link>
           </div>
-        ) : null}
+        </Card>
+
+        <Card className="nx-workspace-panel" as="section">
+          <h2>Workspace boundary</h2>
+          <p>
+            {inspectionWorkspace
+              ? "Inspection templates, assignments and field execution are intentionally absent until their dedicated roadmap phases are implemented."
+              : auditWorkspace
+                ? "The dedicated Audit UI is not implemented yet. Current access is limited to already implemented readable resources."
+                : "Only currently implemented institution, scheme, enrollment and project capabilities are shown. Future monitoring modules stay absent until they are real."}
+          </p>
+          <div className="nx-workspace-future-note">
+            Workspace selection changes navigation and presentation only. It does not create permissions, widen jurisdiction, manufacture institution membership or bypass MFA.
+          </div>
+        </Card>
       </section>
-
-      <section className="nx-section" id="components" aria-labelledby="components-heading">
-        <SectionHeading
-          id="components-heading"
-          title="Core interaction primitives"
-          description="Shared controls use the same token, typography, focus and motion contracts across desktop and mobile."
-        />
-
-        <div className="nx-component-grid">
-          <Card className="nx-component-panel" as="section">
-            <h3>Actions and states</h3>
-            <p>Neutral examples for component verification. They do not execute domain operations.</p>
-            <div className="nx-button-row">
-              <Button>Primary action</Button>
-              <Button variant="secondary">Secondary</Button>
-              <Button variant="ghost">Quiet action</Button>
-              <Button variant="danger">Destructive</Button>
-            </div>
-
-            <div style={{ display: "grid", gap: 10, marginTop: 18 }}>
-              <InlineNotice title="Information pattern">Use concise, factual copy and preserve human decision-making.</InlineNotice>
-              <InlineNotice tone="success" title="Success pattern">A completed system action can be acknowledged without exaggerating assurance.</InlineNotice>
-            </div>
-          </Card>
-
-          <Card className="nx-component-panel" as="section">
-            <h3>Form controls</h3>
-            <p>Labels remain visible, hints remain subordinate, and native semantics are preserved.</p>
-            <div className="nx-form-stack">
-              <Field label="Example text field" htmlFor="design-text" hint="Component example only; no record is created.">
-                <Input id="design-text" placeholder="Enter sample text" autoComplete="off" />
-              </Field>
-
-              <Field label="Example selection" htmlFor="design-select">
-                <Select id="design-select" defaultValue="default">
-                  <option value="default">Default option</option>
-                  <option value="secondary">Secondary option</option>
-                </Select>
-              </Field>
-
-              <Field label="Example notes" htmlFor="design-notes">
-                <Textarea id="design-notes" placeholder="Write neutral component-review notes" />
-              </Field>
-
-              <Checkbox
-                id="design-checkbox"
-                label="Example checkbox"
-                description="Keyboard and pointer interaction use the native checkbox contract."
-              />
-              <Switch
-                id="design-switch"
-                label="Example switch"
-                description="The switch is a presentation of a native checkbox with role=switch."
-              />
-            </div>
-          </Card>
-        </div>
-      </section>
-
-      <section className="nx-section" aria-labelledby="patterns-heading">
-        <SectionHeading
-          id="patterns-heading"
-          title="Responsive and workflow patterns"
-          description="Modal surfaces, data presentation, pagination and generic workflow anatomy are implemented before domain-specific lifecycles."
-        />
-        <DesignSystemShowcase />
-      </section>
-
-      <section className="nx-section" id="tokens" aria-labelledby="tokens-heading">
-        <SectionHeading
-          id="tokens-heading"
-          title="Semantic tokens"
-          description="Meaning is centralized so product modules do not scatter one-off colors, radii, shadows or status styling."
-        />
-
-        <div className="nx-token-grid">
-          <TokenSample name="Primary" variable="--nx-primary" value="Action / focus" />
-          <TokenSample name="Surface" variable="--nx-surface" value="Readable content" />
-          <TokenSample name="Success" variable="--nx-success" value="Confirmed success" />
-          <TokenSample name="Danger" variable="--nx-danger" value="Error / destructive" />
-        </div>
-
-        <div className="nx-risk-row" aria-label="Risk semantic token examples">
-          <div className="nx-risk-token nx-risk-token--low"><strong>risk-low</strong><span>Semantic token only</span></div>
-          <div className="nx-risk-token nx-risk-token--medium"><strong>risk-medium</strong><span>Semantic token only</span></div>
-          <div className="nx-risk-token nx-risk-token--high"><strong>risk-high</strong><span>Semantic token only</span></div>
-          <div className="nx-risk-token nx-risk-token--critical"><strong>risk-critical</strong><span>Semantic token only</span></div>
-        </div>
-      </section>
-    </AppShell>
-  );
-}
-
-function SystemStatusCard({ label, value, detail }: { label: string; value: string; detail: string }) {
-  return (
-    <Card className="nx-status-card" as="article">
-      <div>
-        <p>{label}</p>
-        <strong>{value}</strong>
-      </div>
-      <div className="nx-status-card-footer">
-        <StatusBadge tone={statusTone(value)}>{value}</StatusBadge>
-        <p>{detail}</p>
-      </div>
-    </Card>
-  );
-}
-
-function TokenSample({ name, variable, value }: { name: string; variable: string; value: string }) {
-  const style = { "--token-color": `var(${variable})` } as CSSProperties;
-
-  return (
-    <div className="nx-token-sample" style={style}>
-      <span aria-hidden="true" />
-      <div>
-        <strong>{name}</strong>
-        <small>{variable} · {value}</small>
-      </div>
-    </div>
+    </main>
   );
 }
