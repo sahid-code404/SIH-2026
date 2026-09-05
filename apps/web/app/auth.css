@@ -1,0 +1,275 @@
+.nx-auth-page,
+.nx-account-page {
+  min-height: 100dvh;
+  color: var(--nx-text-primary);
+  background:
+    radial-gradient(circle at 12% 8%, color-mix(in srgb, var(--nx-primary) 12%, transparent), transparent 34rem),
+    var(--nx-background);
+}
+
+.nx-auth-page {
+  display: grid;
+  place-items: center;
+  padding: clamp(1rem, 4vw, 3rem);
+}
+
+.nx-auth-card {
+  width: min(100%, 31rem);
+  display: grid;
+  gap: 1.5rem;
+  padding: clamp(1.25rem, 4vw, 2rem);
+  border: 1px solid var(--nx-border);
+  border-radius: var(--nx-radius-xl);
+  background: color-mix(in srgb, var(--nx-surface) 93%, transparent);
+  box-shadow: var(--nx-shadow-lg);
+  backdrop-filter: blur(18px);
+}
+
+.nx-auth-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: .75rem;
+  width: fit-content;
+  color: inherit;
+  text-decoration: none;
+}
+
+.nx-auth-brand > span:last-child {
+  display: grid;
+  gap: .1rem;
+}
+
+.nx-auth-brand small {
+  color: var(--nx-text-muted);
+}
+
+.nx-auth-heading {
+  display: grid;
+  gap: .6rem;
+}
+
+.nx-auth-heading h1,
+.nx-account-hero h1 {
+  margin: 0;
+  line-height: 1.04;
+  letter-spacing: -.03em;
+}
+
+.nx-auth-heading p,
+.nx-account-hero p,
+.nx-account-card-heading p,
+.nx-session-row p,
+.nx-auth-security-note p {
+  margin: 0;
+  color: var(--nx-text-secondary);
+}
+
+.nx-auth-form {
+  display: grid;
+  gap: 1rem;
+}
+
+.nx-auth-security-note {
+  display: grid;
+  gap: .35rem;
+  padding: 1rem;
+  border-radius: var(--nx-radius-lg);
+  background: var(--nx-surface-muted);
+  border: 1px solid var(--nx-border);
+}
+
+.nx-account-page {
+  padding: clamp(1rem, 3vw, 2rem);
+}
+
+.nx-account-header,
+.nx-account-hero,
+.nx-account-grid,
+.nx-account-page > .nx-notice {
+  width: min(100%, 78rem);
+  margin-inline: auto;
+}
+
+.nx-account-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+
+.nx-account-actions {
+  display: flex;
+  gap: .5rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.nx-account-hero {
+  margin-top: clamp(2rem, 5vw, 4.5rem);
+  margin-bottom: 1rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: end;
+  gap: 1rem;
+}
+
+.nx-account-page > .nx-notice {
+  margin-top: 1rem;
+  margin-bottom: 1rem;
+}
+
+.nx-account-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+  padding-block: 1rem 4rem;
+}
+
+.nx-account-card {
+  min-width: 0;
+  display: grid;
+  align-content: start;
+  gap: 1rem;
+  padding: clamp(1rem, 2.5vw, 1.5rem);
+}
+
+.nx-account-card-heading,
+.nx-session-row,
+.nx-session-title {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.nx-account-card-heading h2 {
+  margin: 0 0 .25rem;
+  font-size: 1.05rem;
+}
+
+.nx-session-list {
+  display: grid;
+  gap: .75rem;
+}
+
+.nx-session-row {
+  padding: .9rem;
+  border-radius: var(--nx-radius-lg);
+  border: 1px solid var(--nx-border);
+  background: var(--nx-surface-muted);
+}
+
+.nx-session-row > div {
+  min-width: 0;
+}
+
+.nx-session-row p {
+  margin-top: .35rem;
+  overflow-wrap: anywhere;
+}
+
+.nx-session-row small {
+  display: block;
+  margin-top: .35rem;
+  color: var(--nx-text-muted);
+}
+
+.nx-session-title {
+  justify-content: flex-start;
+  align-items: center;
+  gap: .5rem;
+}
+
+.nx-mfa-secret {
+  display: grid;
+  gap: .45rem;
+  padding: 1rem;
+  border-radius: var(--nx-radius-lg);
+  background: var(--nx-surface-muted);
+  border: 1px solid var(--nx-border);
+}
+
+.nx-mfa-secret code,
+.nx-identity-list code {
+  overflow-wrap: anywhere;
+  font-size: .85rem;
+}
+
+.nx-mfa-secret a {
+  width: fit-content;
+  color: var(--nx-primary);
+  font-weight: 650;
+}
+
+.nx-mfa-secret small {
+  color: var(--nx-text-muted);
+}
+
+.nx-identity-list {
+  display: grid;
+  gap: 0;
+  margin: 0;
+}
+
+.nx-identity-list > div {
+  display: grid;
+  grid-template-columns: minmax(7rem, .65fr) minmax(0, 1.35fr);
+  gap: 1rem;
+  padding-block: .8rem;
+  border-bottom: 1px solid var(--nx-border);
+}
+
+.nx-identity-list > div:last-child {
+  border-bottom: 0;
+}
+
+.nx-identity-list dt {
+  color: var(--nx-text-muted);
+}
+
+.nx-identity-list dd {
+  margin: 0;
+  min-width: 0;
+}
+
+.nx-auth-loading {
+  width: min(100%, 78rem);
+  margin: 0 auto;
+  padding-top: 4rem;
+  color: var(--nx-text-secondary);
+}
+
+@media (max-width: 760px) {
+  .nx-account-header,
+  .nx-account-hero,
+  .nx-account-card-heading,
+  .nx-session-row {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .nx-account-actions {
+    justify-content: stretch;
+  }
+
+  .nx-account-actions .nx-button,
+  .nx-session-row .nx-button {
+    width: 100%;
+  }
+
+  .nx-account-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .nx-identity-list > div {
+    grid-template-columns: 1fr;
+    gap: .25rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nx-auth-card,
+  .nx-account-card {
+    backdrop-filter: none;
+  }
+}

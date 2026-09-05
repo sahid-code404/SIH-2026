@@ -44,8 +44,6 @@ const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 await send("Page.enable");
 await send("Runtime.enable");
 
-// Chrome's remote-debugging window defaults to a narrow viewport on GitHub-hosted
-// runners. Establish the actual desktop acceptance viewport before testing layout.
 await send("Emulation.setDeviceMetricsOverride", {
   width: 1440,
   height: 1200,
@@ -105,5 +103,48 @@ assert.notEqual(mobile.mobileNav, "none", "Mobile navigation should be visible a
 assert.equal(mobile.sidebar, "none", "Desktop sidebar should be hidden at 390px");
 assert.equal(mobile.skipTarget, "#main-content", "Skip link target changed unexpectedly");
 
-console.log("Browser smoke passed", { desktop, mobile });
+await send("Emulation.setDeviceMetricsOverride", {
+  width: 1440,
+  height: 1000,
+  deviceScaleFactor: 1,
+  mobile: false,
+});
+await send("Page.navigate", { url: `${appUrl}/login` });
+await delay(2500);
+
+const loginDesktop = await evaluate(`({
+  width: window.innerWidth,
+  scrollWidth: document.documentElement.scrollWidth,
+  heading: document.querySelector('h1')?.textContent?.trim() ?? '',
+  emailType: document.querySelector('#email')?.getAttribute('type') ?? '',
+  passwordType: document.querySelector('#password')?.getAttribute('type') ?? '',
+  submitText: document.querySelector('button[type="submit"]')?.textContent?.trim() ?? '',
+  mainId: document.querySelector('main')?.id ?? ''
+})`);
+assert.ok(loginDesktop.heading.includes("Sign in to NirikshanX"), "Login heading was not rendered");
+assert.equal(loginDesktop.emailType, "email", "Login email field contract changed");
+assert.equal(loginDesktop.passwordType, "password", "Login password field contract changed");
+assert.equal(loginDesktop.submitText, "Sign in", "Login primary action was not rendered");
+assert.equal(loginDesktop.mainId, "main-content", "Login main landmark changed unexpectedly");
+assert.ok(loginDesktop.scrollWidth <= loginDesktop.width + 1, "Login page overflows horizontally on desktop");
+
+await send("Emulation.setDeviceMetricsOverride", {
+  width: 390,
+  height: 844,
+  deviceScaleFactor: 1,
+  mobile: true,
+});
+await send("Page.reload", { ignoreCache: true });
+await delay(2200);
+const loginMobile = await evaluate(`({
+  width: window.innerWidth,
+  scrollWidth: document.documentElement.scrollWidth,
+  cardWidth: document.querySelector('.nx-auth-card')?.getBoundingClientRect().width ?? 0,
+  viewportHeight: window.innerHeight
+})`);
+assert.equal(loginMobile.width, 390, "Login mobile viewport override was not applied");
+assert.ok(loginMobile.scrollWidth <= loginMobile.width + 1, "Login page overflows horizontally on mobile");
+assert.ok(loginMobile.cardWidth > 280 && loginMobile.cardWidth <= 390, `Login card width is invalid: ${loginMobile.cardWidth}`);
+
+console.log("Browser smoke passed", { desktop, mobile, loginDesktop, loginMobile });
 socket.close();
