@@ -89,17 +89,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [acceptAuthenticated, clearAuth]);
 
   useEffect(() => {
-    let cancelled = false;
-    refresh()
-      .catch(() => {
-        if (!cancelled) clearAuth();
-      })
-      .finally(() => {
-        if (!cancelled) setStatus((current) => (current === "loading" ? "anonymous" : current));
-      });
-    return () => {
-      cancelled = true;
-    };
+    const timer = window.setTimeout(() => {
+      void refresh().catch(() => clearAuth());
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, [clearAuth, refresh]);
 
   const login = useCallback(
@@ -159,9 +152,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = useCallback(async () => {
     try {
-      if (tokenRef.current) {
-        await request("/api/v1/auth/logout", { method: "POST" });
-      }
+      if (tokenRef.current) await request("/api/v1/auth/logout", { method: "POST" });
     } finally {
       clearAuth();
     }
@@ -169,9 +160,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logoutAll = useCallback(async () => {
     try {
-      if (tokenRef.current) {
-        await request("/api/v1/auth/logout-all", { method: "POST" });
-      }
+      if (tokenRef.current) await request("/api/v1/auth/logout-all", { method: "POST" });
     } finally {
       clearAuth();
     }

@@ -62,8 +62,13 @@ export default function AccountPage() {
   }, [request]);
 
   useEffect(() => {
-    if (status === "anonymous") router.replace("/login");
-    if (status === "authenticated") void loadSessions();
+    if (status === "anonymous") {
+      router.replace("/login");
+      return;
+    }
+    if (status !== "authenticated") return;
+    const timer = window.setTimeout(() => void loadSessions(), 0);
+    return () => window.clearTimeout(timer);
   }, [loadSessions, router, status]);
 
   async function revokeSession(sessionId: string, current: boolean) {

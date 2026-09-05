@@ -1,7 +1,7 @@
 package org.nirikshanx.auth;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 import java.nio.charset.StandardCharsets;
 import java.security.GeneralSecurityException;
 import java.security.MessageDigest;
@@ -90,9 +90,6 @@ public class JwtService {
             for (String claim : ALLOWED_CLAIMS) {
                 if (!payload.hasNonNull(claim)) throw new InvalidJwtException();
             }
-            payload.fieldNames().forEachRemaining(name -> {
-                if (!ALLOWED_CLAIMS.contains(name)) throw new InvalidJwtException();
-            });
 
             String issuer = payload.path("iss").asText();
             String audience = payload.path("aud").asText();

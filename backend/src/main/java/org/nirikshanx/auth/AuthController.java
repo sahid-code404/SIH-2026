@@ -94,9 +94,10 @@ public class AuthController {
         if (!revoked) {
             throw new ApiException(HttpStatus.NOT_FOUND, "SESSION_NOT_FOUND", "Active session was not found.");
         }
-        ResponseEntity.BodyBuilder response = ResponseEntity.noContent();
-        if (sessionId.equals(principal.sessionId())) response.header(HttpHeaders.SET_COOKIE, clearRefreshCookie().toString());
-        return response.build();
+        if (sessionId.equals(principal.sessionId())) {
+            return ResponseEntity.noContent().header(HttpHeaders.SET_COOKIE, clearRefreshCookie().toString()).build();
+        }
+        return ResponseEntity.noContent().build();
     }
 
     @PostMapping("/password/change")
