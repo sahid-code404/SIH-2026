@@ -34,30 +34,25 @@ test("semantic token contract includes required surface, status and risk tokens"
 });
 
 test("reduced-motion and visible-focus contracts are present", async () => {
-  const css = await source("app/globals.css");
-  assert.match(css, /:focus-visible/);
-  assert.match(css, /prefers-reduced-motion:\s*reduce/);
+  const globals = await source("app/globals.css");
+  const workspace = await source("app/workspace.css");
+  assert.match(globals, /:focus-visible/);
+  assert.match(globals, /prefers-reduced-motion:\s*reduce/);
+  assert.match(workspace, /prefers-reduced-motion:\s*reduce/);
 });
 
-test("application shell keeps skip navigation and does not embed SiteProof role checks", async () => {
-  const shell = await source("components/app-shell.tsx");
+test("authenticated product shell keeps skip navigation and avoids client storage authorization", async () => {
+  const shell = await source("components/role-aware-shell.tsx");
+  const provider = await source("components/workspace-provider.tsx");
   assert.match(shell, /href="#main-content"/);
   assert.match(shell, /aria-label="Primary"/);
-  assert.doesNotMatch(shell, /role\s*===/);
-  assert.doesNotMatch(shell, /localStorage/);
+  assert.match(shell, /nx-workspace-mobile-nav/);
+  assert.match(provider, /\/api\/v1\/authz\/me/);
+  assert.doesNotMatch(shell, /localStorage|sessionStorage/);
+  assert.doesNotMatch(provider, /localStorage|sessionStorage/);
 });
 
-test("sections have real aria-labelledby targets", async () => {
-  const page = await source("app/page.tsx");
-  const primitives = await source("components/ui/primitives.tsx");
-  for (const id of ["system-heading", "components-heading", "patterns-heading", "tokens-heading"]) {
-    assert.match(page, new RegExp(`aria-labelledby="${id}"`));
-    assert.match(page, new RegExp(`id="${id}"`));
-  }
-  assert.match(primitives, /<h2 id=\{id\}>/);
-});
-
-test("modal overlays use native dialog behavior and explicit cancellation", async () => {
+test("design-system overlays retain native dialog behavior and explicit cancellation", async () => {
   const overlays = await source("components/ui/overlays.tsx");
   assert.match(overlays, /<dialog/);
   assert.match(overlays, /showModal\(\)/);
@@ -65,8 +60,11 @@ test("modal overlays use native dialog behavior and explicit cancellation", asyn
   assert.match(overlays, /aria-labelledby=/);
 });
 
-test("live status remains backed by the real same-origin system endpoint", async () => {
+test("workspace home uses real implemented APIs and contains no fabricated monitoring metrics", async () => {
   const page = await source("app/page.tsx");
-  assert.match(page, /\/backend-api\/api\/v1\/system\/status/);
-  assert.doesNotMatch(page, /fake risk|fake inspection|fake AI/i);
+  assert.match(page, /\/api\/v1\/institutions/);
+  assert.match(page, /\/api\/v1\/schemes/);
+  assert.match(page, /\/api\/v1\/projects/);
+  assert.doesNotMatch(page, /mock risk|fake risk|fake inspection|fake AI|sample anomaly/i);
+  assert.match(page, /intentionally absent until their dedicated roadmap phases/);
 });
