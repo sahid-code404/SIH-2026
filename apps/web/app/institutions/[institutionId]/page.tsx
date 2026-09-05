@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "@/components/auth-provider";
 import { InstitutionForm, type Institution, type InstitutionPayload } from "@/components/institution-form";
+import { InstitutionProgramsPanel } from "@/components/institution-programs-panel";
 import { Button, Card, InlineNotice, StatusBadge } from "@/components/ui/primitives";
 
 type AuthorizationView = { effectivePermissions: string[] };
@@ -191,6 +192,8 @@ export default function InstitutionDetailPage() {
           </Card>
         ) : null}
       </div>
+
+      {authorization ? <InstitutionProgramsPanel institutionId={institutionId} effectivePermissions={authorization.effectivePermissions} /> : null}
     </main>
   );
 }
@@ -203,7 +206,7 @@ function DetailHeader() {
   return (
     <header className="nx-institution-width nx-institution-header">
       <Link className="nx-auth-brand" href="/institutions"><span className="nx-brand-mark" aria-hidden="true">NX</span><span><strong>NirikshanX</strong><small>Institution overview</small></span></Link>
-      <nav aria-label="Institution navigation"><Link href="/account">Account & security</Link><Link href="/">System</Link></nav>
+      <nav aria-label="Institution navigation"><Link href="/programs">Programs</Link><Link href="/account">Account & security</Link><Link href="/">System</Link></nav>
     </header>
   );
 }
