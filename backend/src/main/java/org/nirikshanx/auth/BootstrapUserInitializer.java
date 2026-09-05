@@ -1,6 +1,7 @@
 package org.nirikshanx.auth;
 
 import java.util.UUID;
+import org.nirikshanx.authorization.AuthorizationRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.ApplicationArguments;
@@ -15,16 +16,19 @@ public class BootstrapUserInitializer implements ApplicationRunner {
 
     private final BootstrapUserProperties properties;
     private final AuthRepository repository;
+    private final AuthorizationRepository authorizationRepository;
     private final PasswordEncoder passwordEncoder;
     private final PasswordPolicy passwordPolicy;
 
     public BootstrapUserInitializer(
             BootstrapUserProperties properties,
             AuthRepository repository,
+            AuthorizationRepository authorizationRepository,
             PasswordEncoder passwordEncoder,
             PasswordPolicy passwordPolicy) {
         this.properties = properties;
         this.repository = repository;
+        this.authorizationRepository = authorizationRepository;
         this.passwordEncoder = passwordEncoder;
         this.passwordPolicy = passwordPolicy;
     }
@@ -45,8 +49,10 @@ public class BootstrapUserInitializer implements ApplicationRunner {
             throw new IllegalStateException("BOOTSTRAP_USER_PASSWORD is required when bootstrap is enabled");
         }
 
-        if (repository.findUserByEmail(email).isPresent()) {
-            log.info("Local bootstrap user already exists; leaving credentials unchanged");
+        AuthRepository.UserRow existing = repository.findUserByEmail(email).orElse(null);
+        if (existing != null) {
+            authorizationRepository.ensureBootstrapSystemAdmin(existing.id());
+            log.info("Local bootstrap user already exists; credentials unchanged and bootstrap authorization ensured");
             return;
         }
 
@@ -54,12 +60,14 @@ public class BootstrapUserInitializer implements ApplicationRunner {
         String preferredLanguage = properties.preferredLanguage() == null || properties.preferredLanguage().isBlank()
                 ? "en"
                 : properties.preferredLanguage().trim();
+        UUID userId = UUID.randomUUID();
         repository.insertUser(
-                UUID.randomUUID(),
+                userId,
                 email,
                 properties.displayName().trim(),
                 passwordEncoder.encode(properties.password()),
                 preferredLanguage);
-        log.info("Created local bootstrap user from explicit environment configuration");
+        authorizationRepository.ensureBootstrapSystemAdmin(userId);
+        log.info("Created local bootstrap system administrator from explicit environment configuration");
     }
 }
