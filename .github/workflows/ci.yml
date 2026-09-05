@@ -101,14 +101,6 @@ jobs:
           docker compose exec -T postgres sh -lc 'psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB"' < scripts/verify_database_core.sql
       - name: Verify role-aware workspace authorization inputs
         run: node scripts/verify_workspaces.mjs
-      - name: Verify additive authorization policy and jurisdiction boundaries
-        run: node scripts/verify_authorization_current.mjs
-      - name: Verify institution model, PostGIS and scoped access
-        run: node scripts/verify_institutions.mjs
-      - name: Verify schemes, enrollments, projects and milestone scope
-        run: node scripts/verify_programs.mjs
-      - name: Verify authentication and session security
-        run: node scripts/verify_authentication.mjs
       - name: Verify authenticated responsive workspace behavior
         run: |
           BROWSER="$(command -v google-chrome || command -v chromium || command -v chromium-browser || true)"
@@ -130,6 +122,14 @@ jobs:
           test -s /tmp/nirikshanx-ui/desktop-1440x1200.png
           test -s /tmp/nirikshanx-ui/mobile-390x844.png
           test -s /tmp/nirikshanx-ui/login-mobile-390x844.png
+      - name: Verify additive authorization policy and jurisdiction boundaries
+        run: node scripts/verify_authorization_current.mjs
+      - name: Verify institution model, PostGIS and scoped access
+        run: node scripts/verify_institutions.mjs
+      - name: Verify schemes, enrollments, projects and milestone scope
+        run: node scripts/verify_programs.mjs
+      - name: Verify authentication and session security
+        run: node scripts/verify_authentication.mjs
       - name: Upload UI regression render evidence
         uses: actions/upload-artifact@v4
         with:
