@@ -40,7 +40,7 @@ function tone(value: string) {
 
 export default function InstitutionsPage() {
   const router = useRouter();
-  const { status, user, request } = useAuth();
+  const { status, request } = useAuth();
   const [authorization, setAuthorization] = useState<AuthorizationView | null>(null);
   const [data, setData] = useState<InstitutionPage | null>(null);
   const [query, setQuery] = useState("");
