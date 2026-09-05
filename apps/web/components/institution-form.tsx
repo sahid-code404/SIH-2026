@@ -145,8 +145,6 @@ export function InstitutionForm({
   const [districts, setDistricts] = useState<District[]>([]);
   const [geographyError, setGeographyError] = useState<string | null>(null);
 
-  useEffect(() => setForm(initialState(value)), [value]);
-
   useEffect(() => {
     let cancelled = false;
     void request("/api/v1/geography/states")
@@ -167,10 +165,7 @@ export function InstitutionForm({
   }, [request]);
 
   useEffect(() => {
-    if (!form.stateId) {
-      setDistricts([]);
-      return;
-    }
+    if (!form.stateId) return;
     let cancelled = false;
     void request(`/api/v1/geography/states/${form.stateId}/districts`)
       .then(async (response) => {
