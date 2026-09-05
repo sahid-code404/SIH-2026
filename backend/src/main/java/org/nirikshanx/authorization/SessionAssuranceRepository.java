@@ -1,5 +1,7 @@
 package org.nirikshanx.authorization;
 
+import java.time.Instant;
+import java.util.Optional;
 import java.util.UUID;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
@@ -12,9 +14,9 @@ public class SessionAssuranceRepository {
         this.jdbc = jdbc;
     }
 
-    public boolean isMfaVerified(UUID userId, UUID sessionId) {
-        Long count = jdbc.sql("""
-                SELECT count(*)
+    public Optional<Instant> findMfaVerifiedAt(UUID userId, UUID sessionId) {
+        return jdbc.sql("""
+                SELECT COALESCE(s.mfa_verified_at, s.created_at) AS verified_at
                   FROM user_sessions s
                   JOIN user_totp t ON t.user_id = s.user_id
                  WHERE s.user_id = :userId
@@ -27,8 +29,7 @@ public class SessionAssuranceRepository {
                 """)
                 .param("userId", userId)
                 .param("sessionId", sessionId)
-                .query(Long.class)
-                .single();
-        return count != null && count > 0;
+                .query(Instant.class)
+                .optional();
     }
 }
