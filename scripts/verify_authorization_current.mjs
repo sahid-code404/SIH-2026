@@ -54,6 +54,10 @@ function sqlLiteral(value) {
   return String(value).replaceAll("'", "''");
 }
 
+function idList(values) {
+  return values.map((value) => `'${sqlLiteral(value)}'`).join(",");
+}
+
 function db(sql, { tuplesOnly = true, allowFailure = false } = {}) {
   const args = ["compose", "exec", "-T", "postgres", "psql", "-v", "ON_ERROR_STOP=1", "-U", dbUser, "-d", dbName];
   if (tuplesOnly) args.push("-tA");
@@ -116,22 +120,32 @@ async function login(email) {
 }
 
 function cleanup() {
-  const userArray = sqlArray(users);
-  db(`
-DELETE FROM user_refresh_tokens WHERE session_id IN (SELECT id FROM user_sessions WHERE user_id = ANY(${userArray}));
-DELETE FROM mfa_login_challenges WHERE user_id = ANY(${userArray});
-DELETE FROM user_totp WHERE user_id = ANY(${userArray});
-DELETE FROM user_sessions WHERE user_id = ANY(${userArray});
-DELETE FROM authentication_events WHERE user_id = ANY(${userArray});
-DELETE FROM user_jurisdictions WHERE user_id = ANY(${userArray});
-DELETE FROM user_roles WHERE user_id = ANY(${userArray});
-DELETE FROM users WHERE id = ANY(${userArray});
+  const userIds = idList(users);
+  const result = db(`
+DELETE FROM user_refresh_tokens WHERE session_id IN (SELECT id FROM user_sessions WHERE user_id IN (${userIds}));
+DELETE FROM mfa_login_challenges WHERE user_id IN (${userIds});
+DELETE FROM user_totp WHERE user_id IN (${userIds});
+DELETE FROM user_sessions WHERE user_id IN (${userIds});
+DELETE FROM authentication_events WHERE user_id IN (${userIds});
+DELETE FROM user_jurisdictions WHERE user_id IN (${userIds});
+DELETE FROM user_roles WHERE user_id IN (${userIds});
+DELETE FROM users WHERE id IN (${userIds});
 DELETE FROM role_permissions WHERE role_id = '${roleId}';
 DELETE FROM roles WHERE id = '${roleId}';
 DELETE FROM districts WHERE id IN ('${districtA}','${districtB}');
 DELETE FROM states WHERE id IN ('${stateA}','${stateB}');
 SELECT 1;
 `, { allowFailure: true });
+  if (result.status !== 0) {
+    throw new Error(`authorization verifier cleanup failed: ${result.stderr || "psql exited non-zero"}`);
+  }
+}
+
+function assertClean() {
+  const userIds = idList(users);
+  assert(dbScalar(`SELECT count(*) FROM users WHERE id IN (${userIds});`) === "0", "temporary authorization verifier users were not cleaned up");
+  assert(dbScalar(`SELECT count(*) FROM roles WHERE id='${roleId}';`) === "0", "temporary authorization verifier role was not cleaned up");
+  assert(dbScalar(`SELECT count(*) FROM states WHERE id IN ('${stateA}','${stateB}');`) === "0", "temporary authorization verifier geography was not cleaned up");
 }
 
 async function main() {
@@ -149,6 +163,7 @@ async function main() {
   );
 
   cleanup();
+  assertClean();
   console.log("[authz-current] create isolated non-MFA authorization fixtures");
   db(`
 INSERT INTO states (id, code, name) VALUES
@@ -230,4 +245,5 @@ try {
   await main();
 } finally {
   cleanup();
+  assertClean();
 }
